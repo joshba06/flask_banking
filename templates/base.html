@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <title>{% block title %} {% endblock %} - FlaskApp</title>
+  </head>
+  <body>
+      <div class="content">
+        <h1>Transactions</h1>
+        <ul>
+          {% for transaction in transactions %}
+            <li>{{ transaction }}</li>
+          {% endfor%}
+        </ul>
+      </div>
+  </body>
+</html>
