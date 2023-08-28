@@ -1,0 +1,46 @@
+.main-container {
+  width: 80%;
+  margin: 0px auto;
+}
+
+.account-selector {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border-bottom: 1px solid gray;
+}
+
+.transaction-options {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid gray;
+}
+
+.transactions-window {
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.transactions-filter {
+  padding-left: 10px;
+  padding-right: 10px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.transactions-table {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.table .value-column {
+  display: flex;
+  justify-content: flex-end;
+}
