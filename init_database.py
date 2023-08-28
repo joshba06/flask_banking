@@ -3,10 +3,13 @@ from sqlalchemy.exc import OperationalError
 from config import app, db
 from models import Transaction
 
+from datetime import datetime, timedelta
 import random
 
 from faker import Faker
 faker = Faker()
+
+from pprint import pprint
 
 def get_data_from_table(model):
     try:
@@ -16,15 +19,31 @@ def get_data_from_table(model):
     except OperationalError:
         return []
 
+
 def create_database(db):
     db.create_all()
+
+    # Generate array of random dates that will be later assigned to transactions date today-7days .. today+7days
+    dates = []
+    today = datetime.now()
+    seven_days_ago = today - timedelta(days=7)
+    seven_days_later = today + timedelta(days=7)
+
+    for j in range(15):
+        random_seconds = random.randint(0, (seven_days_later - seven_days_ago).total_seconds())
+        random_datetime = seven_days_ago + timedelta(seconds=random_seconds)
+        dates.append(random_datetime)
+    sorted_dates = sorted(dates)
+
+    # Create transactions by ascending date
     saldo = 0
     for i in range(15):
         name = faker.name()
         amount = round(random.uniform(-1000, 1000), 2)
         saldo += amount
         saldo = round(saldo,2)
-        new_transaction = Transaction(title=name, amount=amount, saldo=saldo)
+        # print("[{}] - amount: {}, saldo: {}".format(sorted_dates[i], amount, saldo))
+        new_transaction = Transaction(title=name, amount=amount, saldo=saldo, date_booked=sorted_dates[i])
         db.session.add(new_transaction)
 
     db.session.commit()

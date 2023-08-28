@@ -1,15 +1,17 @@
 from config import db
 from models import Transaction
+from sqlalchemy import desc
+from pprint import pprint
 
 def read_all(start_date = None, end_date = None):
     if start_date != None:
-        transactions = Transaction.query.filter(Transaction.created_at >= start_date).all()
+        transactions = Transaction.query.filter(Transaction.date_booked >= start_date).order_by(desc(Transaction.date_booked)).all()
     elif end_date != None:
-        transactions = Transaction.query.filter(Transaction.created_at <= end_date).all()
+        transactions = Transaction.query.filter(Transaction.date_booked <= end_date).order_by(desc(Transaction.date_booked)).all()
     elif start_date != None and end_date != None:
-        transactions = Transaction.query.filter(Transaction.created_at >= start_date, Transaction.created_at <= end_date).all()
+        transactions = Transaction.query.filter(Transaction.date_booked >= start_date, Transaction.date_booked <= end_date).order_by(desc(Transaction.date_booked)).all()
     else:
-        transactions = Transaction.query.all()
+        transactions = Transaction.query.order_by(desc(Transaction.date_booked)).all()
     return transactions
 
 def create(title, amount):

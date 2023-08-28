@@ -26,14 +26,20 @@
 
       <div class="transactions-window">
         <div class="transactions-filter">
-          Filter
+          <form action="/" method="post">
+            {{ filter_form.hidden_tag() }}
+            {{ filter_form.start_date.label }}
+            {{ filter_form.start_date() }}
+            {{ filter_form.end_date.label }}
+            {{ filter_form.end_date() }}
+            {{ filter_form.submit() }}
+          </form>
         </div>
 
         <div class="transactions-table">
           <table class="table table-striped">
             <thead>
               <tr>
-                <th scope="col">#</th>
                 <th scope="col">Date [Sort]</th>
                 <th scope="col">Title [Sort]</th>
                 <th scope="col">Amount [Sort]</th>
@@ -43,8 +49,7 @@
             <tbody>
               {% for transaction in transactions %}
                 <tr>
-                  <th scope="row">1</th>
-                  <td>{{ transaction.created_at }}</td>
+                  <td>{{ transaction.date_booked.strftime("%d %b, %Y") }}</td>
                   <td>{{ transaction.title }}</td>
                   <td class="value-column">{{ transaction.amount }}</td>
                   <td>{{ transaction.saldo }}</td>
