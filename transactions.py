@@ -2,6 +2,7 @@ from config import db
 from models import Transaction
 from sqlalchemy import desc
 from pprint import pprint
+from datetime import datetime
 
 def read_all(start_date = None, end_date = None):
     if start_date != None:
@@ -17,7 +18,7 @@ def read_all(start_date = None, end_date = None):
 def create(title, amount):
     last_saldo = db.session.query(Transaction).order_by(Transaction.id.desc()).first().saldo
     saldo = last_saldo + amount
-    new_transaction = Transaction(title=title, amount=amount, saldo=saldo)
+    new_transaction = Transaction(title=title, amount=amount, saldo=saldo, date_booked=datetime.now())
 
     db.session.add(new_transaction)
     try:

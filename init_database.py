@@ -26,11 +26,10 @@ def create_database(db):
     # Generate array of random dates that will be later assigned to transactions date today-7days .. today+7days
     dates = []
     today = datetime.now()
-    seven_days_ago = today - timedelta(days=7)
-    seven_days_later = today + timedelta(days=7)
+    seven_days_ago = today - timedelta(days=14)
 
     for j in range(15):
-        random_seconds = random.randint(0, (seven_days_later - seven_days_ago).total_seconds())
+        random_seconds = random.randint(0, (today - seven_days_ago).total_seconds())
         random_datetime = seven_days_ago + timedelta(seconds=random_seconds)
         dates.append(random_datetime)
     sorted_dates = sorted(dates)
