@@ -37,6 +37,7 @@
                 <th scope="col">Date [Sort]</th>
                 <th scope="col">Title [Sort]</th>
                 <th scope="col">Amount [Sort]</th>
+                <th scope="col">Saldo</th>
               </tr>
             </thead>
             <tbody>
@@ -46,6 +47,7 @@
                   <td>{{ transaction.created_at }}</td>
                   <td>{{ transaction.title }}</td>
                   <td class="value-column">{{ transaction.amount }}</td>
+                  <td>{{ transaction.saldo }}</td>
                 </tr>
               {% endfor%}
             </tbody>
