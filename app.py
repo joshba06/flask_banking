@@ -15,6 +15,7 @@ class TransactionForm(FlaskForm):
     submit = SubmitField("Add")
 
 class FilterForm(FlaskForm):
+    transaction_title = StringField("Title")
     start_date = DateField('Startdate', format='%Y-%m-%d')
     end_date = DateField('Enddate', format='%Y-%m-%d')
     submit = SubmitField("Go")
@@ -45,11 +46,16 @@ def index():
         if response:
             return redirect(url_for("index"))
 
+    titles = []
+    for transaction in transactions:
+        titles.append(transaction.title)
+    unique_titles = list(set(titles))
 
     return render_template('base.html',
-                           transactions=transactions,
-                           template_form=transaction_form,
-                           filter_form=filter_form)
+                            unique_titles=unique_titles,
+                            transactions=transactions,
+                            template_form=transaction_form,
+                            filter_form=filter_form)
 
 
 if __name__ == "__main__":

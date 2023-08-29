@@ -5,6 +5,8 @@
       <title>{% block title %} {% endblock %} - FlaskApp</title>
       <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
       <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+      <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.js"></script>
+      <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css" rel="stylesheet" type="text/css" />
   </head>
   <body>
     <div class="main-container">
@@ -22,6 +24,7 @@
           {{ template_form.amount() }}
           {{ template_form.submit() }}
         </form>
+
       </div>
 
       <div class="transactions-window">
@@ -32,15 +35,17 @@
             {{ filter_form.start_date() }}
             {{ filter_form.end_date.label }}
             {{ filter_form.end_date() }}
+            {{ filter_form.transaction_title.label }}
+            {{ filter_form.transaction_title(id="autocomplete") }}
             {{ filter_form.submit() }}
           </form>
         </div>
 
         <div class="transactions-table">
-          <table class="table table-striped">
+          <table class="table table-striped" id="transactionsTable">
             <thead>
               <tr>
-                <th scope="col">Date [Sort]</th>
+                <th scope="col">Date <button id="sortButton">Sort Ascending</button></th>
                 <th scope="col">Title [Sort]</th>
                 <th scope="col">Amount [Sort]</th>
                 <th scope="col">Saldo</th>
@@ -62,7 +67,19 @@
 
     <!-- Optional JavaScript -->
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/sort.js') }}"></script>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+    <!-- Autocomplete -->
+    <!-- pass transactions variable to js -->
+    <script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+    <script>
+      var unique_titles = JSON.parse('{{ unique_titles|tojson|safe }}');
+    </script>
+
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
   </body>
