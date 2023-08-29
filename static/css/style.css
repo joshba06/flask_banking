@@ -3,6 +3,16 @@
   margin: 0px auto;
 }
 
+.page-actions {
+  margin-top: 20px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .account-selector {
   padding-top: 10px;
   padding-bottom: 10px;
@@ -11,7 +21,9 @@
   border-bottom: 1px solid gray;
 }
 
-.transaction-options {
+.new-transaction {
+  display: flex;
+  justify-content: space-around;
   padding-left: 10px;
   padding-right: 10px;
   padding-top: 20px;

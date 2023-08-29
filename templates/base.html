@@ -11,11 +11,17 @@
   <body>
     <div class="main-container">
 
+      <div class="page-actions">
+        <form>
+          <input type="text" id="autocomplete" placeholder="Search">
+        </form>
+      </div>
+
       <div class="account-selector">
         <h1>Main Account</h1>
       </div>
 
-      <div class="transaction-options">
+      <div class="new-transaction">
         <form action="/" method="post">
           {{ template_form.hidden_tag() }}
           {{ template_form.title.label }}
@@ -36,8 +42,10 @@
             {{ filter_form.end_date.label }}
             {{ filter_form.end_date() }}
             {{ filter_form.transaction_title.label }}
-            {{ filter_form.transaction_title(id="autocomplete") }}
+            {{ filter_form.search_type() }}
+            {{ filter_form.transaction_title() }}
             {{ filter_form.submit() }}
+            {{ filter_form.clear() }}
           </form>
         </div>
 

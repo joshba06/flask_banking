@@ -4,7 +4,7 @@ from config import app
 import transactions as Transactions
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, DecimalField, DateField
+from wtforms import StringField, SubmitField, DecimalField, DateField, SelectField
 from wtforms.validators import DataRequired
 
 from pprint import pprint
@@ -15,31 +15,30 @@ class TransactionForm(FlaskForm):
     submit = SubmitField("Add")
 
 class FilterForm(FlaskForm):
-    transaction_title = StringField("Title")
+    search_type = SelectField('Search type', choices = ["Matches", "Includes"])
+    transaction_title = StringField("Title", render_kw={"placeholder": "Search term"})
     start_date = DateField('Startdate', format='%Y-%m-%d')
     end_date = DateField('Enddate', format='%Y-%m-%d')
-    submit = SubmitField("Go")
+    submit = SubmitField("Filter")
+    clear = SubmitField("Clear")
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
 
-    # Filter displayed results
+    # Transactions filter
     filter_form = FilterForm()
-    if request.method == 'POST' and filter_form.submit:
-        if filter_form.start_date.data != None and filter_form.end_date.data != None:
-            transactions = Transactions.read_all(start_date = filter_form.start_date.data, end_date=filter_form.end_date.data)
-        elif filter_form.start_date.data != None:
-            filter_form.start_date.data = filter_form.start_date.data
-            transactions = Transactions.read_all(start_date = filter_form.start_date.data)
-        elif filter_form.end_date.data != None:
-            transactions = Transactions.read_all(end_date=filter_form.end_date.data)
-        else:
-            transactions = Transactions.read_all()
+    if request.method == 'POST' and filter_form.clear.data:
+        return redirect(url_for("index"))
+    elif request.method == 'POST' and filter_form.submit.data:
+        transactions = Transactions.read_all(start_date = filter_form.start_date.data,
+                                             end_date=filter_form.end_date.data,
+                                             search_type=filter_form.search_type.data,
+                                             transaction_title=filter_form.transaction_title.data)
     else:
         transactions = Transactions.read_all()
 
-    # Provide form to add new transactions
+    # New transaction
     transaction_form = TransactionForm()
     if transaction_form.validate_on_submit():
         response = Transactions.create(transaction_form.title.data, transaction_form.amount.data)
