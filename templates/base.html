@@ -10,26 +10,6 @@
   </head>
   <body>
     <div class="main-container">
-
-      <div class="page-actions">
-        <form>
-          <input type="text" id="autocomplete" placeholder="Search">
-        </form>
-
-        <form action="{{ url_for('download_csv') }}" method="POST">
-          <input type="hidden" name="start_date" value="{{ filter_form.start_date.data }}">
-          <input type="hidden" name="end_date" value="{{ filter_form.end_date.data }}">
-          <input type="hidden" name="transaction_title" value="{{ filter_form.transaction_title.data }}">
-          <input type="hidden" name="search_type" value="{{ filter_form.search_type.data }}">
-          <button type="submit">Download this data</button>
-      </form>
-
-      </div>
-
-      <div class="account-selector">
-        <h1>Main Account</h1>
-      </div>
-
       <div class="new-transaction">
         <form action="/" method="post">
           {{ template_form.hidden_tag() }}
@@ -39,25 +19,48 @@
           {{ template_form.amount() }}
           {{ template_form.submit() }}
         </form>
+      </div>
 
+      <div class="account-selector">
+        <h1>Main Account</h1>
+      </div>
+
+      <div class="transactions-filter">
+        <form action="/" method="post">
+          {{ filter_form.hidden_tag() }}
+          {{ filter_form.start_date.label }}
+          {{ filter_form.start_date() }}
+          {{ filter_form.end_date.label }}
+          {{ filter_form.end_date() }}
+          {{ filter_form.transaction_title.label }}
+          {{ filter_form.search_type() }}
+          {{ filter_form.transaction_title() }}
+          {{ filter_form.submit() }}
+          {{ filter_form.clear() }}
+        </form>
+      </div>
+
+      <div class="transaction-statistics">
+        <div class="left">Left</div>
+        <div class="right">
+          <div id='chart' class='chart'></div>
+        </div>
+      </div>
+
+      <div class="menu-bar">
+        <form>
+          <input type="text" id="autocomplete" placeholder="Search">
+        </form>
+        <form action="{{ url_for('download_csv') }}" method="POST">
+          <input type="hidden" name="start_date" value="{{ filter_form.start_date.data }}">
+          <input type="hidden" name="end_date" value="{{ filter_form.end_date.data }}">
+          <input type="hidden" name="transaction_title" value="{{ filter_form.transaction_title.data }}">
+          <input type="hidden" name="search_type" value="{{ filter_form.search_type.data }}">
+          <button type="submit">Download this data</button>
+        </form>
       </div>
 
       <div class="transactions-window">
-        <div class="transactions-filter">
-          <form action="/" method="post">
-            {{ filter_form.hidden_tag() }}
-            {{ filter_form.start_date.label }}
-            {{ filter_form.start_date() }}
-            {{ filter_form.end_date.label }}
-            {{ filter_form.end_date() }}
-            {{ filter_form.transaction_title.label }}
-            {{ filter_form.search_type() }}
-            {{ filter_form.transaction_title() }}
-            {{ filter_form.submit() }}
-            {{ filter_form.clear() }}
-          </form>
-        </div>
-
         <div class="transactions-table">
           <table class="table table-striped" id="transactionsTable">
             <thead>
@@ -77,9 +80,16 @@
                   <td>{{ transaction.saldo }}</td>
                 </tr>
               {% endfor%}
+              <tr>
+                <td></td>
+                <td></td>
+                <td class="value-column">Sum: {{transactions_sum}}</td>
+                <td></td>
+              </tr>
             </tbody>
           </table>
         </div>
+
       </div>
 
     <!-- Optional JavaScript -->
@@ -96,6 +106,13 @@
       var unique_titles = JSON.parse('{{ unique_titles|tojson|safe }}');
     </script>
 
+    <!-- Plotly -->
+    <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+    <script type='text/javascript'>
+      var graphs = {{graphJSON|safe}};
+      graphs.config={displayModeBar: false}
+      Plotly.plot('chart',graphs,{});
+    </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>

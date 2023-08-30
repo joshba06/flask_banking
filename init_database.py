@@ -21,14 +21,15 @@ def get_data_from_table(model):
 
 
 def create_database(db):
+
     db.create_all()
 
     # Generate array of random dates that will be later assigned to transactions date today-7days .. today+7days
     dates = []
     today = datetime.now()
-    seven_days_ago = today - timedelta(days=14)
+    seven_days_ago = today - timedelta(days=65)
 
-    for j in range(15):
+    for j in range(25):
         random_seconds = random.randint(0, (today - seven_days_ago).total_seconds())
         random_datetime = seven_days_ago + timedelta(seconds=random_seconds)
         dates.append(random_datetime)
@@ -36,7 +37,7 @@ def create_database(db):
 
     # Create transactions by ascending date
     saldo = 0
-    for i in range(15):
+    for i in range(25):
         name = faker.name()
         amount = round(random.uniform(-1000, 1000), 2)
         saldo += amount

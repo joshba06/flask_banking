@@ -2,9 +2,9 @@ from flask import render_template, request, url_for, redirect
 import csv
 from io import StringIO
 from werkzeug.wrappers import Response
-from datetime import datetime
+from datetime import datetime, date
 
-from config import app
+from config import app, db
 import transactions as Transactions
 
 from flask_wtf import FlaskForm
@@ -12,6 +12,12 @@ from wtforms import StringField, SubmitField, DecimalField, DateField, SelectFie
 from wtforms.validators import DataRequired
 
 from pprint import pprint
+
+import pandas as pd
+import json
+import plotly
+import plotly.express as px
+import plotly.graph_objects as go
 
 class TransactionForm(FlaskForm):
     title = StringField("Transaction title", validators=[DataRequired()])
@@ -49,16 +55,90 @@ def index():
         if response:
             return redirect(url_for("index"))
 
+    transactions_sum = 0
     titles = []
     for transaction in transactions:
         titles.append(transaction.title)
+        transactions_sum += transaction.amount
     unique_titles = list(set(titles))
+
+    grouped_transactions = Transactions.group_monthly()
+    pprint(grouped_transactions)
+
+    data_y = []
+    data_pos = []
+    data_neg = []
+    data_sum = []
+    first_date = date(min(grouped_transactions.keys()), min(grouped_transactions[min(grouped_transactions.keys())].keys()), 1)
+    last_date = date(max(grouped_transactions.keys()), max(grouped_transactions[max(grouped_transactions.keys())].keys()), 1)
+    current_date = first_date
+
+    while current_date <= last_date:
+        data_y.append("{}/{}".format(current_date.month, current_date.year))
+
+        if current_date.year in grouped_transactions.keys():
+            if current_date.month in grouped_transactions[current_date.year].keys():
+                data_pos.append(grouped_transactions[current_date.year][current_date.month]['positive_amount'])
+                data_neg.append(abs(grouped_transactions[current_date.year][current_date.month]['negative_amount']))
+                data_sum.append(grouped_transactions[current_date.year][current_date.month]['total_amount'])
+            else:
+                data_pos.append(0)
+                data_neg.append(0)
+                data_sum.append(0)
+        else:
+            for i in range(12):
+                data_pos.append(0)
+                data_neg.append(0)
+                data_sum.append(0)
+
+        if current_date.month == 12:
+            current_date = date(current_date.year + 1, 1, 1)
+        else:
+            current_date = date(current_date.year, current_date.month + 1, 1)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=data_y,
+                    y=data_pos,
+                    name='Income',
+                    marker_color='rgb(0,128,0)'
+                    ))
+    fig.add_trace(go.Bar(x=data_y,
+                    y=data_neg,
+                    name='Expenses',
+                    marker_color='rgb(255,160,122)'
+                    ))
+
+    fig.update_layout(
+        # title='US Export of Plastic Scrap',
+        xaxis_tickfont_size=14,
+        yaxis=dict(
+            title='Amount',
+            titlefont_size=16,
+            tickfont_size=14,
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        showlegend=False,
+        # legend=dict(
+        #     x=0,
+        #     y=1.0,
+        #     bgcolor='rgba(255, 255, 255, 0)',
+        #     bordercolor='rgba(255, 255, 255, 0)'
+        # ),
+        barmode='group',
+        bargap=0.15, # gap between bars of adjacent location coordinates.
+        bargroupgap=0.1 # gap between bars of the same location coordinate.
+    )
+
+    graphJSON = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
     return render_template('base.html',
                             unique_titles=unique_titles,
                             transactions=transactions,
                             template_form=transaction_form,
-                            filter_form=filter_form)
+                            filter_form=filter_form,
+                            graphJSON=graphJSON,
+                            transactions_sum=transactions_sum)
 
 
 
@@ -73,7 +153,8 @@ def download_csv():
     transactions = Transactions.read_all(start_date = start_date,
                                              end_date=end_date,
                                              search_type=search_type,
-                                             transaction_title=transaction_title)
+                                             transaction_title=transaction_title
+                                             )
 
 
     def generate():

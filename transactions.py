@@ -1,6 +1,6 @@
 from config import db
 from models import Transaction
-from sqlalchemy import desc
+from sqlalchemy import desc, func, case
 from pprint import pprint
 from datetime import datetime
 
@@ -45,3 +45,24 @@ def create(title, amount):
         db.session.rollback()
         print(f"Failed to create new transaction with title {new_transaction.title}")
         return False
+
+
+def group_monthly():
+    result = db.session.query(
+            func.extract('year', Transaction.date_booked).label('year'),
+            func.extract('month', Transaction.date_booked).label('month'),
+            func.sum(Transaction.amount).label('total_amount'),
+            func.sum(case((Transaction.amount >= 0, Transaction.amount), else_=0)).label('positive_amount'),
+            func.sum(case((Transaction.amount < 0, Transaction.amount), else_=0)).label('negative_amount')
+        ).group_by('year', 'month').order_by('year', 'month').all()
+
+    summary_data = {}
+    for row in result:
+        if row.year not in summary_data:
+            summary_data[row.year] = {}
+        summary_data[row.year][row.month] = {'total_amount': row.total_amount,
+                                             'positive_amount': row.positive_amount,
+                                             'negative_amount': row.negative_amount}
+
+
+    return summary_data
