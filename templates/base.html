@@ -15,6 +15,15 @@
         <form>
           <input type="text" id="autocomplete" placeholder="Search">
         </form>
+
+        <form action="{{ url_for('download_csv') }}" method="POST">
+          <input type="hidden" name="start_date" value="{{ filter_form.start_date.data }}">
+          <input type="hidden" name="end_date" value="{{ filter_form.end_date.data }}">
+          <input type="hidden" name="transaction_title" value="{{ filter_form.transaction_title.data }}">
+          <input type="hidden" name="search_type" value="{{ filter_form.search_type.data }}">
+          <button type="submit">Download this data</button>
+      </form>
+
       </div>
 
       <div class="account-selector">

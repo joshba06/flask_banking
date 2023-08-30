@@ -1,4 +1,8 @@
 from flask import render_template, request, url_for, redirect
+import csv
+from io import StringIO
+from werkzeug.wrappers import Response
+from datetime import datetime
 
 from config import app
 import transactions as Transactions
@@ -55,6 +59,48 @@ def index():
                             transactions=transactions,
                             template_form=transaction_form,
                             filter_form=filter_form)
+
+
+
+@app.route("/download_csv", methods=["POST"])
+def download_csv():
+    start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date() if request.form.get('start_date') != "None" else None
+    end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date() if request.form.get('end_date') != "None" else None
+    transaction_title = request.form.get('transaction_title') if request.form.get('transaction_title') != "None" else None
+    search_type = request.form.get('search_type') if request.form.get('search_type') != "None" else None
+
+    # Query transactions, just like in index route
+    transactions = Transactions.read_all(start_date = start_date,
+                                             end_date=end_date,
+                                             search_type=search_type,
+                                             transaction_title=transaction_title)
+
+
+    def generate():
+        data = StringIO()
+        writer = csv.writer(data)
+
+        writer.writerow(("Date", "Title", "Amount", "Saldo"))
+        yield data.getvalue()
+        data.seek(0)
+        data.truncate(0)
+
+        for transaction in transactions:
+            writer.writerow((
+                transaction.date_booked.strftime("%Y / %m / %d"),
+                transaction.title,
+                transaction.amount,
+                transaction.saldo,
+            ))
+            yield data.getvalue()
+            data.seek(0)
+            data.truncate(0)
+
+    response = Response(generate(), mimetype='text/csv')
+    response.headers.set("Content-Disposition", "attachment", filename="data.csv")
+    return response
+
+
 
 
 if __name__ == "__main__":
