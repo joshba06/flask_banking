@@ -47,22 +47,35 @@ def create(title, amount):
         return False
 
 
-def group_monthly():
-    result = db.session.query(
-            func.extract('year', Transaction.date_booked).label('year'),
-            func.extract('month', Transaction.date_booked).label('month'),
-            func.sum(Transaction.amount).label('total_amount'),
-            func.sum(case((Transaction.amount >= 0, Transaction.amount), else_=0)).label('positive_amount'),
-            func.sum(case((Transaction.amount < 0, Transaction.amount), else_=0)).label('negative_amount')
-        ).group_by('year', 'month').order_by('year', 'month').all()
-
-    summary_data = {}
-    for row in result:
-        if row.year not in summary_data:
-            summary_data[row.year] = {}
-        summary_data[row.year][row.month] = {'total_amount': row.total_amount,
-                                             'positive_amount': row.positive_amount,
-                                             'negative_amount': row.negative_amount}
+def group_by_month(transactions):
+    data = {}
+    for transaction in transactions:
+        # print("Date: {}, amount: {}".format(transaction.date_booked, transaction.amount))
+        if transaction.date_booked.year not in data.keys():
+            data[transaction.date_booked.year] = {}
+        if transaction.date_booked.month not in data[transaction.date_booked.year].keys():
+            data[transaction.date_booked.year][transaction.date_booked.month] = {"income": 0, "expenses": 0, "total": 0}
+        if transaction.amount >= 0:
+            data[transaction.date_booked.year][transaction.date_booked.month]["income"] += transaction.amount
+        elif transaction.amount < 0:
+            data[transaction.date_booked.year][transaction.date_booked.month]["expenses"] += transaction.amount
+        data[transaction.date_booked.year][transaction.date_booked.month]["total"] += transaction.amount
 
 
-    return summary_data
+    # result = db.session.query(
+    #         func.extract('year', Transaction.date_booked).label('year'),
+    #         func.extract('month', Transaction.date_booked).label('month'),
+    #         func.sum(Transaction.amount).label('total_amount'),
+    #         func.sum(case((Transaction.amount >= 0, Transaction.amount), else_=0)).label('positive_amount'),
+    #         func.sum(case((Transaction.amount < 0, Transaction.amount), else_=0)).label('negative_amount')
+    #     ).group_by('year', 'month').order_by('year', 'month').all()
+
+    # summary_data = {}
+    # for row in result:
+    #     if row.year not in summary_data:
+    #         summary_data[row.year] = {}
+    #     summary_data[row.year][row.month] = {'total_amount': row.total_amount,
+    #                                          'positive_amount': row.positive_amount,
+    #                                          'negative_amount': row.negative_amount}
+
+    return data

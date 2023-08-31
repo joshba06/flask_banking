@@ -60,13 +60,20 @@
 .transaction-statistics {
   display: flex;
   justify-content: space-evenly;
-  border: 1px solid black;
+  /* border: 1px solid black; */
 }
 .transaction-statistics .left {
-  border: 1px solid black;
-  width: 50%;
+  /* border: 1px solid black; */
+  width: 30%;
 }
+
+.chart {
+  display: flex;
+  justify-content: space-around;
+  height: 35vh;
+}
+
 .transaction-statistics .right {
-  border: 1px solid black;
-  width: 50%;
+  /* border: 1px solid black; */
+  width: 70%;
 }
