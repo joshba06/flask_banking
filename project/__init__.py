@@ -22,9 +22,6 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    # from . import db
-    # db.init_app(app)
-
     from project.db import init_db
     init_db()
 

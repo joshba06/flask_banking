@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy import desc, case
+import decimal
 
 from sqlalchemy import Column, Integer, String, DateTime, Numeric
 from project.db import Base, db_session
@@ -46,19 +47,24 @@ class Transaction(Base):
 
     @classmethod
     def create(cls, title, amount):
-        last_saldo = db_session.query(Transaction).order_by(Transaction.id.desc()).first().saldo
-        saldo = last_saldo + amount
-        new_transaction = Transaction(title=title, amount=amount, saldo=saldo, date_booked=datetime.now())
+        # Check input
+        if not isinstance(amount, (int, float, decimal.Decimal)):
+            raise ValueError("The 'amount' variable must be a decimal, integer or float.")
 
-        db_session.add(new_transaction)
+        if db_session.query(Transaction).count() == 0:
+            saldo = amount
+        else:
+            last_saldo = db_session.query(Transaction).order_by(Transaction.id.desc()).first().saldo
+            saldo = last_saldo + decimal.Decimal(amount)
         try:
+            new_transaction = Transaction(title=title, amount=amount, saldo=saldo, date_booked=datetime.now())
+            db_session.add(new_transaction)
             db_session.commit()
             print("Added new transaction. Title: {}, amount: {}".format(title, amount))
-            return True
         except:
             db_session.rollback()
             print(f"Failed to create new transaction with title {new_transaction.title}")
-            return False
+
 
     @classmethod
     def group_by_month(cls, transactions):

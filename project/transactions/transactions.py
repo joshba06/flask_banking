@@ -2,7 +2,7 @@
 
 # Flask
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for
+    Blueprint, flash, g, redirect, render_template, request, session, url_for, jsonify
 )
 # Database connection
 # from project.db import get_db
@@ -50,8 +50,6 @@ class FilterForm(FlaskForm):
 
 @transactions_bp.route("/", methods=["GET", "POST"])
 def index():
-
-
     # Transactions filter
     filter_form = FilterForm()
     if request.method == 'POST' and filter_form.clear.data:
@@ -180,3 +178,20 @@ def index():
                             graphJSON_bar=graphJSON_bar,
                             graphJSON_donut=graphJSON_donut,
                             transactions_sum=transactions_sum)
+
+
+
+
+@transactions_bp.route("/transactions", methods=["POST"])
+def create_transaction():
+    data = request.json
+    title = data.get('title')
+    amount = data.get('amount')
+
+    if not title or not amount:
+        return jsonify({'message': 'Missing parameters'}), 400
+
+    response = Transaction.create(title, amount)
+
+    if response:
+        return redirect(url_for("transactions.index"))

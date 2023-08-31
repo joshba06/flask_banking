@@ -1,26 +1,26 @@
 import pytest
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from project import create_app
+from project.db import db_session
+from project.models import Transaction
+
+# Define a fixture to clean up the transactions before every test
+@pytest.fixture(autouse=True)
+def clean_transactions():
+    Transaction.query.delete()
 
 #-> Make “app” available everywhere in the tests
 @pytest.fixture()
-def app():
-        app = Flask(__name__)
-        # Create in-memory database
-        app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite://"
-        app.config["SECRET_KEY"] = "my_secret"
-        app.config['TESTING'] = True
+def app(clean_transactions):
+    app = create_app()
+    app.config.update({
+        "TESTING": True,
+    })
 
-        # db = SQLAlchemy(app)
-        db = SQLAlchemy()
-        db.init_app(app)
+    yield app
 
-        with app.app_context():
-                db.create_all()
 
-        yield app
 
 # Simulates requests to the app
 @pytest.fixture()
 def client(app):
-        return app.test_client()
+    return app.test_client()
