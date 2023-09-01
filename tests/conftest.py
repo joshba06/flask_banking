@@ -18,12 +18,17 @@ def app():
     app.config.update({
         "TESTING": True,
     })
-
+    print("Test environment before start:")
     print(Transaction.query.all())
-    u = Transaction('admin', 1234)
-    db_session.add(u)
+    Transaction.query.delete()
     db_session.commit()
+    print("Test environment after test setup")
     print(Transaction.query.all())
+
+    # u = Transaction('admin', 1234)
+    # db_session.add(u)
+    # db_session.commit()
+    # print(Transaction.query.all())
 
     yield app
 

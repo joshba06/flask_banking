@@ -4,67 +4,69 @@ from datetime import datetime
 from decimal import Decimal
 from project.db import db_session
 
-def test_default_date_booked(app):
-    print(Transaction.query.all())
-    u = Transaction('admin2', 12345)
-    db_session.add(u)
-    db_session.commit()
-    print(Transaction.query.all())
-    assert u == Decimal('123.45')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Database connection tests
+def test_starts_with_empty_database(app):
+    assert Transaction.query.count() == 0
 
 ## Model initialisation tests
-# def test_default_date_booked(session):
+# def test_default_date_booked(app):
+#     print()
+#     u = Transaction('admin2', 12345)
+#     db_session.add(u)
+#     db_session.commit()
+#     print(Transaction.query.all())
+#     assert u == Decimal('123.45')
 
 
-    # print("Session has: {} entries".format(session.query(Transaction).count()))
-    # Transaction(title="Test Transaction", amount=100.00)
-
-    # # Session = db_session()
-    # new_transaction = Transaction("Hello", 123)
-    # print("2 Session has: {} entries".format(session.query(Transaction).count()))
-    # session.add(new_transaction)
-    # session.commit()
-
-    # print("3 Session has: {} entries".format(session.query(Transaction).count()))
-
-    # trs = Transaction("Hello", 123)
-    # db_session.add(trs)
-
-    # Create new session and see if adding Transaction will add to db
-    # print(db_session.query(Transaction).all())
-
-    # Commit to db and see if now db has more entries
-
-
+def test_default_date_booked():
     # Test that if no date_booked is provided, it defaults to the current datetime
-    # transaction = Transaction(title="Test Transaction", amount=100.00)
-    # assert isinstance(transaction.amount, datetime)
+    transaction = Transaction("Test Transaction", 100.00)
+    assert isinstance(transaction.date_booked, datetime)
+    assert transaction.date_booked.date() == datetime.now().date()
+
+def test_long_title():
+    # Test that a ValueError is raised when the title is too long
+    with pytest.raises(ValueError, match="The 'title' variable must be a string with less than 80 characters."):
+        Transaction("A" * 81, 100.00)
+
+def test_invalid_amount_type():
+    # Test that a ValueError is raised when the amount is not a valid type
+    with pytest.raises(ValueError, match="The 'amount' variable must be a decimal, integer or float."):
+        Transaction("Test Transaction", "invalid")
+
+def test_invalid_date_booked_type():
+    # Test that a ValueError is raised when date_booked is not of type datetime
+    with pytest.raises(ValueError, match="date_booked is not of type datetime"):
+        Transaction("Test Transaction", 100.00, date_booked="invalid_date")
+
+def test_valid_transaction():
+    title = "Valid Transaction"
+    amount = 100.50
+    date_booked = datetime(2023, 9, 1, 12, 0, 0)
+    transaction = Transaction(title, amount, date_booked)
+
+    assert transaction.title == title
+    assert transaction.amount == Decimal("100.50")
+    assert transaction.date_booked == date_booked
+
+## Database tests
+def test_number_of_rows_added(app):
+    # Create instances of the Transaction class and add them to the database
+    transactions_to_add = [
+        Transaction("Transaction 1", 100.00),
+        Transaction("Transaction 2", 200.00),
+        Transaction("Transaction 3", 300.00),
+    ]
+    for transaction in transactions_to_add:
+        db_session.add(transaction)
+
+    db_session.commit()
+    num_rows = db_session.query(Transaction).count()
+
+    assert num_rows == len(transactions_to_add)
+    assert len(transactions_to_add) == Transaction.query.count()
+
+
 
 # def test_saldo_calculation_with_empty_database(client):
 #     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
@@ -82,24 +84,9 @@ def test_default_date_booked(app):
 #     assert round(t2.saldo, 2) == Decimal('50.00')
 #     assert round(t3.saldo, 2) == Decimal('125.00')
 
-# def test_long_title():
-#     # Test that a ValueError is raised when the title is too long
-#     with pytest.raises(ValueError, match="title must be a string with less than 80 characters"):
-#         Transaction(title="A" * 81, amount=100.00)
 
-# def test_invalid_amount_type():
-#     # Test that a ValueError is raised when the amount is not a valid type
-#     with pytest.raises(ValueError, match="amount must be a decimal, integer or float"):
-#         Transaction(title="Test Transaction", amount="invalid")
 
-# def test_invalid_date_booked_type():
-#     # Test that a ValueError is raised when date_booked is not of type datetime
-#     with pytest.raises(ValueError, match="date_booked is not of type datetime"):
-#         Transaction(title="Test Transaction", amount=100.00, date_booked="invalid_date")
 
-# def test_no_title_provided():
-#     transaction = Transaction()
-#     assert transaction.saldo == Decimal('123.45')
 
 
 ## Model adding to database tests
