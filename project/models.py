@@ -3,7 +3,7 @@ from sqlalchemy import desc, case
 import decimal
 
 from sqlalchemy import Column, Integer, String, DateTime, Numeric
-from project.db import Base, db_session
+from project.db import Base
 
 
 class Transaction(Base):
@@ -12,11 +12,44 @@ class Transaction(Base):
     id = Column(Integer, primary_key = True)
     title = Column(String(80), index = True)
     amount = Column(Numeric(precision=10, scale=2), nullable=False, index = False, unique = False)
-    saldo = Column(Numeric(precision=10, scale=2), nullable=False, index = False, unique = False)
-    date_booked = Column(DateTime)
+    # saldo = Column(Numeric(precision=10, scale=2), nullable=False, index = False, unique = False)
+    date_booked = Column(DateTime, nullable=False)
+
+    def __init__(self, title, amount, date_booked=None):
+        if not isinstance(title, str) or len(title) > 80:
+            raise ValueError("The 'title' variable must be a string with less than 80 characters.")
+        else:
+            self.title = title
+
+        if not isinstance(amount, (int, float, decimal.Decimal)):
+            raise ValueError("The 'amount' variable must be a decimal, integer or float.")
+        else:
+            self.amount = decimal.Decimal(amount)
+
+        if date_booked == None:
+            self.date_booked = datetime.now()
+        else:
+            if not isinstance(date_booked, datetime):
+                raise ValueError("date_booked is not of type datetime.")
+            else:
+                self.date_booked = date_booked
 
     def __repr__(self):
-        return "[{}] {}, {}, saldo: {}".format(self.date_booked, self.title, self.amount, self.saldo)
+        return "[{}] title: '{}', amount: {:.2f}".format(self.date_booked, self.title, self.amount)
+
+
+    # def calculate_saldo(self, session):
+    #     last_transaction = (
+    #         session.query(Transaction)
+    #         .filter(Transaction.id != self.id)  # Exclude the current instance
+    #         .order_by(Transaction.id.desc())
+    #         .first()
+    #     )
+    #     if last_transaction:
+    #         self.saldo = last_transaction.saldo + self.amount
+    #     else:
+    #         self.saldo = self.amount
+
 
     @classmethod
     def read_all(cls, start_date = None, end_date = None, search_type = None, transaction_title = None):
@@ -45,25 +78,25 @@ class Transaction(Base):
 
         return sorted_filtered_transactions
 
-    @classmethod
-    def create(cls, title, amount):
-        # Check input
-        if not isinstance(amount, (int, float, decimal.Decimal)):
-            raise ValueError("The 'amount' variable must be a decimal, integer or float.")
+    # @classmethod
+    # def create(cls, title, amount):
+    #     # Check input
+    #     if not isinstance(amount, (int, float, decimal.Decimal)):
+    #         raise ValueError("The 'amount' variable must be a decimal, integer or float.")
 
-        if db_session.query(Transaction).count() == 0:
-            saldo = amount
-        else:
-            last_saldo = db_session.query(Transaction).order_by(Transaction.id.desc()).first().saldo
-            saldo = last_saldo + decimal.Decimal(amount)
-        try:
-            new_transaction = Transaction(title=title, amount=amount, saldo=saldo, date_booked=datetime.now())
-            db_session.add(new_transaction)
-            db_session.commit()
-            print("Added new transaction. Title: {}, amount: {}".format(title, amount))
-        except:
-            db_session.rollback()
-            print(f"Failed to create new transaction with title {new_transaction.title}")
+    #     if db_session.query(Transaction).count() == 0:
+    #         saldo = amount
+    #     else:
+    #         last_saldo = db_session.query(Transaction).order_by(Transaction.id.desc()).first().saldo
+    #         saldo = last_saldo + decimal.Decimal(amount)
+    #     try:
+    #         new_transaction = Transaction(title=title, amount=amount, saldo=saldo, date_booked=datetime.now())
+    #         db_session.add(new_transaction)
+    #         db_session.commit()
+    #         print("Added new transaction. Title: {}, amount: {}".format(title, amount))
+    #     except:
+    #         db_session.rollback()
+    #         print(f"Failed to create new transaction with title {new_transaction.title}")
 
 
     @classmethod
