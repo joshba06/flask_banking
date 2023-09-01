@@ -217,10 +217,161 @@ def test_read_all_invalid_search_type(app):
         Transaction.read_all(search_type="InvalidSearch")
 
 
-# Test the same for group_by
+def test_group_by_month_valid_input():
+    # Test case: Valid input
+    transactions = [
+        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
+    ]
+    result = Transaction.group_by_month(transactions)
+    assert isinstance(result, dict)
+
+def test_group_by_month_invalid_input_not_list():
+    # Test case: Invalid input (not a list)
+    with pytest.raises(TypeError, match="Input transactions must be a list."):
+        Transaction.group_by_month("invalid_input")
+
+def test_group_by_month_invalid_input_not_transaction_objects():
+    # Test case: Invalid input (not a list of Transaction objects)
+    with pytest.raises(TypeError, match="Input transactions must be a list of Transaction objects."):
+        Transaction.group_by_month([1, 2, 3])
+
+def test_group_by_month_data_calculation():
+    transactions = [
+        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
+        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
+    ]
+    result = Transaction.group_by_month(transactions)
+
+    # Check the calculated data for January 2023
+    assert result[2023][1]["income"] == 100.00
+    assert result[2023][1]["expenses"] == -50.00
+    assert result[2023][1]["total"] == 50.00
+
+    # Check the calculated data for February 2023
+    assert result[2023][2]["income"] == 75.00
+    assert result[2023][2]["expenses"] == 0  # No expenses in February
+    assert result[2023][2]["total"] == 75.00
 
 
+def test_group_by_month_empty_input():
+    # Test case: Empty input list
+    transactions = []
+    result = Transaction.group_by_month(transactions)
+    assert result == {}  # Expect an empty dictionary for an empty input list
 
-# Integration tests
-# Check if sum of displayed transactions is correct by implementing certain class on document
-# Check if number and value of transactions is displayed correctly
+def test_group_by_month_single_transaction():
+    # Test case: Input with a single transaction
+    transactions = [
+        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15))
+    ]
+    result = Transaction.group_by_month(transactions)
+    assert len(result) == 1  # Expect one year
+    assert 2023 in result  # Year 2023 should be present
+    assert len(result[2023]) == 1  # Expect one month
+    assert 1 in result[2023]  # Month 1 should be present
+
+def test_group_by_month_multiple_years():
+    # Test case: Input with transactions spanning multiple years
+    transactions = [
+        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2022, 12, 15)),
+        Transaction(title="Income 2", amount=200.00, date_booked=datetime(2023, 1, 5)),
+        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 2, 20)),
+    ]
+    result = Transaction.group_by_month(transactions)
+    assert len(result) == 2  # Expect two years (2022 and 2023)
+    assert 2022 in result and 2023 in result  # Years 2022 and 2023 should be present
+    assert len(result[2022]) == 1  # Expect one month (December)
+    assert 12 in result[2022]  # Month 12 (December) should be present
+    assert len(result[2023]) == 2  # Expect two months (January and February)
+    assert 1 in result[2023] and 2 in result[2023]  # Months 1 (January) and 2 (February) should be present
+
+def test_group_by_month_mixed_income_expense():
+    # Test case: Input with mixed income and expense transactions
+    transactions = [
+        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
+        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
+    ]
+    result = Transaction.group_by_month(transactions)
+    assert result[2023][1]["income"] == 100.00  # January income
+    assert result[2023][1]["expenses"] == -50.00  # January expenses
+    assert result[2023][1]["total"] == 50.00  # January total
+    assert result[2023][2]["income"] == 75.00  # February income
+    assert result[2023][2]["expenses"] == 0  # February expenses
+    assert result[2023][2]["total"] == 75.00  # February total
+
+def test_group_by_month_negative_amounts_only():
+    # Test case: Input with transactions having only negative amounts
+    transactions = [
+        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(title="Expense 2", amount=-75.00, date_booked=datetime(2023, 2, 5)),
+    ]
+    result = Transaction.group_by_month(transactions)
+    assert result[2023][1]["income"] == 0  # January income
+    assert result[2023][1]["expenses"] == -50.00  # January expenses
+    assert result[2023][1]["total"] == -50.00  # January total
+    assert result[2023][2]["income"] == 0  # February income
+    assert result[2023][2]["expenses"] == -75.00  # February expenses
+    assert result[2023][2]["total"] == -75.00  # February total
+
+def test_group_by_month_positive_amounts_only():
+    # Test case: Input with transactions having only positive amounts
+    transactions = [
+        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
+    ]
+    result = Transaction.group_by_month(transactions)
+    assert result[2023][1]["income"] == 100.00  # January income
+    assert result[2023][1]["expenses"] == 0  # January expenses
+    assert result[2023][1]["total"] == 100.00  # January total
+    assert result[2023][2]["income"] == 75.00  # February
+
+
+def test_group_by_month_multiple_years_months():
+    # Test case: Input with transactions spanning 4 years (2022 to 2025) and 5 months per year
+    transactions = [
+        # Year 2022
+        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2022, 1, 15)),
+        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2022, 2, 20)),
+        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2022, 3, 5)),
+        Transaction(title="Income 3", amount=120.00, date_booked=datetime(2022, 4, 10)),
+        Transaction(title="Expense 2", amount=-80.00, date_booked=datetime(2022, 5, 15)),
+
+        # Year 2023
+        Transaction(title="Income 4", amount=200.00, date_booked=datetime(2023, 1, 2)),
+        Transaction(title="Expense 3", amount=-60.00, date_booked=datetime(2023, 2, 5)),
+        Transaction(title="Income 5", amount=90.00, date_booked=datetime(2023, 3, 12)),
+        Transaction(title="Expense 4", amount=-70.00, date_booked=datetime(2023, 4, 18)),
+        Transaction(title="Income 6", amount=150.00, date_booked=datetime(2023, 5, 25)),
+
+        # Year 2024
+        Transaction(title="Expense 5", amount=-40.00, date_booked=datetime(2024, 1, 7)),
+        Transaction(title="Income 7", amount=80.00, date_booked=datetime(2024, 2, 11)),
+        Transaction(title="Income 8", amount=110.00, date_booked=datetime(2024, 3, 15)),
+        Transaction(title="Expense 6", amount=-55.00, date_booked=datetime(2024, 4, 20)),
+        Transaction(title="Income 9", amount=130.00, date_booked=datetime(2024, 5, 30)),
+
+        # Year 2025
+        Transaction(title="Income 10", amount=70.00, date_booked=datetime(2025, 1, 4)),
+        Transaction(title="Expense 7", amount=-30.00, date_booked=datetime(2025, 2, 9)),
+        Transaction(title="Income 11", amount=140.00, date_booked=datetime(2025, 3, 16)),
+        Transaction(title="Expense 8", amount=-45.00, date_booked=datetime(2025, 4, 22)),
+        Transaction(title="Income 12", amount=95.00, date_booked=datetime(2025, 5, 28)),
+    ]
+    result = Transaction.group_by_month(transactions)
+
+    # Check for all 4 years
+    for year in range(2022, 2026):
+        assert year in result
+        assert len(result[year]) == 5  # Expect 5 months of data for each year
+
+    # Check for specific months in each year (e.g., January, February, etc.)
+    for year in range(2022, 2026):
+        for month in range(1, 6):
+            assert month in result[year]
+            assert isinstance(result[year][month], dict)
+            assert "income" in result[year][month]
+            assert "expenses" in result[year][month]
+            assert "total" in result[year][month]

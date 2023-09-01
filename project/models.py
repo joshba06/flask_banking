@@ -99,32 +99,18 @@ class Transaction(Base):
 
         return sorted_filtered_transactions
 
-    # @classmethod
-    # def create(cls, title, amount):
-    #     # Check input
-    #     if not isinstance(amount, (int, float, decimal.Decimal)):
-    #         raise ValueError("The 'amount' variable must be a decimal, integer or float.")
-
-    #     if db_session.query(Transaction).count() == 0:
-    #         saldo = amount
-    #     else:
-    #         last_saldo = db_session.query(Transaction).order_by(Transaction.id.desc()).first().saldo
-    #         saldo = last_saldo + decimal.Decimal(amount)
-    #     try:
-    #         new_transaction = Transaction(title=title, amount=amount, saldo=saldo, date_booked=datetime.now())
-    #         db_session.add(new_transaction)
-    #         db_session.commit()
-    #         print("Added new transaction. Title: {}, amount: {}".format(title, amount))
-    #     except:
-    #         db_session.rollback()
-    #         print(f"Failed to create new transaction with title {new_transaction.title}")
-
-
     @classmethod
     def group_by_month(cls, transactions):
+        if not isinstance(transactions, list):
+            raise TypeError("Input transactions must be a list.")
+
+        for transaction in transactions:
+            if not isinstance(transaction, cls):
+                raise TypeError("Input transactions must be a list of Transaction objects.")
+
         data = {}
         for transaction in transactions:
-            # print("Date: {}, amount: {}".format(transaction.date_booked, transaction.amount))
+
             if transaction.date_booked.year not in data.keys():
                 data[transaction.date_booked.year] = {}
             if transaction.date_booked.month not in data[transaction.date_booked.year].keys():
@@ -134,22 +120,5 @@ class Transaction(Base):
             elif transaction.amount < 0:
                 data[transaction.date_booked.year][transaction.date_booked.month]["expenses"] += transaction.amount
             data[transaction.date_booked.year][transaction.date_booked.month]["total"] += transaction.amount
-
-
-        # result = session.query(
-        #         func.extract('year', Transaction.date_booked).label('year'),
-        #         func.extract('month', Transaction.date_booked).label('month'),
-        #         func.sum(Transaction.amount).label('total_amount'),
-        #         func.sum(case((Transaction.amount >= 0, Transaction.amount), else_=0)).label('positive_amount'),
-        #         func.sum(case((Transaction.amount < 0, Transaction.amount), else_=0)).label('negative_amount')
-        #     ).group_by('year', 'month').order_by('year', 'month').all()
-
-        # summary_data = {}
-        # for row in result:
-        #     if row.year not in summary_data:
-        #         summary_data[row.year] = {}
-        #     summary_data[row.year][row.month] = {'total_amount': row.total_amount,
-        #                                          'positive_amount': row.positive_amount,
-        #                                          'negative_amount': row.negative_amount}
 
         return data
