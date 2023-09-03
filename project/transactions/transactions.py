@@ -40,7 +40,7 @@ class TransactionForm(FlaskForm):
 
 class FilterForm(FlaskForm):
     search_type = SelectField('Search type', choices = ["Matches", "Includes"])
-    transaction_description = StringField("Description", render_kw={"placeholder": "Search term"})
+    transaction_description = StringField("Description", render_kw={"placeholder": "Filter description"})
     start_date = DateField('Startdate', format='%Y-%m-%d')
     end_date = DateField('Enddate', format='%Y-%m-%d')
     submit = SubmitField("Filter")
@@ -51,7 +51,6 @@ class FilterForm(FlaskForm):
 @transactions_bp.route("/", methods=["GET", "POST"])
 def index():
 
-    print("Starting Niklas")
     # Transactions filter
     filter_form = FilterForm()
     if request.method == 'POST' and filter_form.clear.data:
@@ -120,18 +119,32 @@ def index():
         data_neg.append(0)
         data_sum.append(0)
 
+
+
+    # Playing around with donut chart
+    
+
+    #
+
     # Donut chart
+    if len(transactions) == 0:
+        values = [1, 1]
+    else:
+        values = [sum(data_pos), sum(data_neg)]
     labels = ['Income','Expenses']
-    values = [sum(data_pos), sum(data_neg)]
-    colors = ['green', 'red']
-    fig_donut = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.3)])
-    fig_donut.update_traces(hoverinfo='label+value', textinfo='value',
-                  marker=dict(colors=colors, line=dict(color='#000000', width=2)))
+    colors = ["#3F3B6C", "#624F82", "#9F73AB", "#A3C7D6"]
+
+
+    fig_donut = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7)])
+    fig_donut.update_traces(hoverinfo='label+value',
+                            textinfo='none',
+                            marker=dict(colors=colors, line=dict(color='#000000', width=2))
+                            )
     fig_donut.update_layout(
-            # description='US Export of Plastic Scrap',
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=False,
+            margin=dict(t=0, b=0, l=0, r=0),
+            annotations=[dict(text='Expenses', x=0.5, y=0.5, font_size=20, showarrow=False)]
         )
     graphJSON_donut = json.dumps(fig_donut, cls=plotly.utils.PlotlyJSONEncoder)
 
@@ -159,6 +172,7 @@ def index():
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         showlegend=False,
+
         # legend=dict(
         #     x=0,
         #     y=1.0,

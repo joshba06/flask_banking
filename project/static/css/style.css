@@ -28,6 +28,27 @@ body {
   border: 1px solid black;
 }
 
+/* Form styling */
+#new-transaction #search_type {
+  height: 30px;
+}
+#new-transaction #start_date {
+  height: 30px;
+}
+#new-transaction #end_date {
+  height: 30px;
+}
+#new-transaction #transaction_description {
+  height: 30px;
+}
+#new-transaction #submit {
+  height: 30px;
+}
+#new-transaction #clear {
+  height: 30px;
+}
+
+
 .new-transaction {
   display: flex;
   justify-content: space-around;
@@ -78,7 +99,7 @@ td {
   /* border: 1px solid black; */
 }
 .transaction-statistics .left {
-  /* border: 1px solid black; */
+  border: 1px solid black;
   width: 30%;
 }
 

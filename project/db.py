@@ -22,9 +22,9 @@ def init_db(test_setup=False):
 
     if test_setup is False:
         print("Initialising database for normal setup")
-        # if len(Transaction.query.all()) == 0:
-        print("Seeding database")
-        create_database(Transaction)
+        if len(Transaction.query.all()) == 0:
+            print("Seeding database")
+            create_database(Transaction)
     else:
         print("Initialising database for test setup")
 

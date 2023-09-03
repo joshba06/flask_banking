@@ -11,7 +11,7 @@
   <body>
     <div class="main-container">
       <div class="new-transaction">
-        <form action="/transactions" method="post">
+        <form action="/transactions" method="post" >
           {{ template_form.hidden_tag() }}
           {{ template_form.description.label }}
           {{ template_form.description() }}
@@ -26,13 +26,11 @@
       </div>
 
       <div class="transactions-filter">
-        <form action="/" method="post">
+        <form action="/" method="post" id="new-transaction">
           {{ filter_form.hidden_tag() }}
-          {{ filter_form.start_date.label }}
           {{ filter_form.start_date() }}
-          {{ filter_form.end_date.label }}
+          To
           {{ filter_form.end_date() }}
-          {{ filter_form.transaction_description.label }}
           {{ filter_form.search_type() }}
           {{ filter_form.transaction_description() }}
           {{ filter_form.submit() }}
