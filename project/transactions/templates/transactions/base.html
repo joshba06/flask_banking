@@ -58,28 +58,31 @@
 
       <div class="transactions-window">
         <div class="transactions-table">
-          <table class="table table-striped" id="transactionsTable">
+          <table class="table" id="transactionsTable">
             <thead>
               <tr>
-                <th scope="col">Date <button id="sortButton">Sort Ascending</button></th>
-                <th scope="col">Description [Sort]</th>
-                <th scope="col">Amount [Sort]</th>
-                <th scope="col">Saldo</th>
+                <th scope="col" style="width: 15%">Date <button id="sortButton">Sort</button></th>
+                <th scope="col">Description</th>
+                <th scope="col" style="width: 15%">Category</th>
+                <th scope="col" class="text-center" style="width: 12%">Amount</th>
+                <th scope="col" class="text-center" style="width: 12%">Saldo</th>
               </tr>
             </thead>
             <tbody>
               {% for transaction in transactions %}
                 <tr>
-                  <td>{{ transaction.date_booked.strftime("%d %b, %Y") }}</td>
+                  <td  class="transaction-date">{{ transaction.date_booked.strftime("%d/%m/%y") }}</td>
                   <td>{{ transaction.description }}</td>
-                  <td class="value-column">{{ transaction.amount }}</td>
-                  <td>{{ transaction.saldo }}</td>
+                  <td>tag, tag</td>
+                  <td class="col-row-amount text-right">{{ transaction.amount }}</td>
+                  <td class="col-row-saldo text-right">{{ transaction.saldo }}</td>
                 </tr>
               {% endfor%}
               <tr>
                 <td></td>
                 <td></td>
-                <td class="value-column">Sum: {{transactions_sum}}</td>
+                <td></td>
+                <td id="transaction-table-sum" class="text-right" style="font-weight: bold">Sum: {{transactions_sum}}</td>
                 <td></td>
               </tr>
             </tbody>

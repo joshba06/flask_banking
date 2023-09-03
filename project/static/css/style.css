@@ -1,4 +1,4 @@
-.body {
+body {
   color: #264A8E;
   background-color: #F4F4F4;
 }
@@ -16,6 +16,7 @@
   padding-right: 10px;
   display: flex;
   justify-content: space-between;
+  border: 1px solid black;
 }
 
 .account-selector {
@@ -23,7 +24,8 @@
   padding-bottom: 10px;
   padding-left: 10px;
   padding-right: 10px;
-  border-bottom: 1px solid gray;
+  /* border-bottom: 1px solid gray; */
+  border: 1px solid black;
 }
 
 .new-transaction {
@@ -33,7 +35,8 @@
   padding-right: 10px;
   padding-top: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid gray;
+  /* border-bottom: 1px solid gray; */
+  border: 1px solid black;
 }
 
 .transactions-window {
@@ -41,6 +44,7 @@
   padding-right: 10px;
   padding-top: 20px;
   padding-bottom: 20px;
+  border: 1px solid black;
 }
 
 .transactions-filter {
@@ -50,16 +54,22 @@
   margin-bottom: 20px;
   display: flex;
   justify-content: flex-end;
+
+}
+
+th {
+  color: #264A8E;
+  font-size: 0.9rem;
+}
+
+td {
+  color: #264A8E;
+  font-size: 0.9rem;
 }
 
 .transactions-table {
   padding-left: 10px;
   padding-right: 10px;
-}
-
-.table .value-column {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .transaction-statistics {
