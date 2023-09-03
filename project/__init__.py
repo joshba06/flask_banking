@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 
-def create_app(test_config=False):
+def create_app(test_setup=False):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
@@ -16,9 +16,8 @@ def create_app(test_config=False):
         pass
 
     from project.db import init_db
-    if test_config is False:
+    if test_setup is False:
         print("Starting normal setup")
-        app.config.from_pyfile('config.py', silent=True)
         init_db()
     else:
         print("Starting test setup")

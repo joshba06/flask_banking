@@ -58,7 +58,6 @@ def test_number_of_rows_added(app):
     assert num_rows == len(transactions_to_add)
 
 
-
 def test_saldo_calculation_with_empty_database(app):
     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
     transactions_to_add = [

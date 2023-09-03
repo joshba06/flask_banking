@@ -4,31 +4,19 @@ from project.models import Transaction
 
 from project.db import db_session
 
-# Define a fixture to clean up the transactions before every test
-# @pytest.fixture(autouse=True)
-# def clean_transactions():
-#     Transaction.query.delete()
-#     print("Deleted transcations")
-#     print(Transaction.query.count())
 
 #-> Make “app” available everywhere in the tests
 @pytest.fixture()
 def app():
-    app = create_app()
+    app = create_app(test_setup=True)
     app.config.update({
         "TESTING": True,
     })
-    # print("Test environment before start:")
-    # print(Transaction.query.all())
+    print("Test environment before setup: {}".format(Transaction.query.all()))
+
     Transaction.query.delete()
     db_session.commit()
-    # print("Test environment after test setup")
-    # print(Transaction.query.all())
-
-    # u = Transaction('admin', 1234)
-    # db_session.add(u)
-    # db_session.commit()
-    # print(Transaction.query.all())
+    print("Test environment after setup: {}".format(Transaction.query.all()))
 
     yield app
 
