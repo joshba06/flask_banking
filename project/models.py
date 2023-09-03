@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from sqlalchemy import desc, case, func
 import decimal
 
@@ -65,14 +65,13 @@ class Transaction(Base):
     def read_all(cls, start_date = None, end_date = None, category = None, search_type = None, transaction_description = None):
 
         # Check input parameters
-        if start_date is not None and not isinstance(start_date, datetime):
-            raise ValueError("start_date must be a datetime object.")
-
-        if end_date is not None and not isinstance(end_date, datetime):
-            raise ValueError("end_date must be a datetime object.")
+        if start_date is not None and not isinstance(start_date, date):
+            raise ValueError("start_date must be a date object.")
+        if end_date is not None and not isinstance(end_date, date):
+            raise ValueError("end_date must be a date object.")
         # Check search_type
-        if search_type not in [None, "Contains", "Matches"]:
-            raise ValueError("search_type must be either 'Contains' or 'Matches'.")
+        if search_type not in [None, "Includes", "Matches"]:
+            raise ValueError("search_type must be either 'Includes' or 'Matches'.")
 
         # Check category
         if category not in [None, "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
@@ -91,14 +90,14 @@ class Transaction(Base):
 
         # Filter results for dates
         if start_date != None and end_date != None:
-            start_date = start_date.date()
-            end_date = end_date.date()
+            start_date = start_date
+            end_date = end_date
             filtered_transactions = [transaction for transaction in transactions if (transaction.date_booked.date() >= start_date and transaction.date_booked.date() <= end_date)]
         elif start_date != None:
-            start_date = start_date.date()
+            start_date = start_date
             filtered_transactions = [transaction for transaction in transactions if transaction.date_booked.date() >= start_date]
         elif end_date != None:
-            end_date = end_date.date()
+            end_date = end_date
             filtered_transactions = [transaction for transaction in transactions if transaction.date_booked.date() <= end_date]
         else:
             filtered_transactions = transactions

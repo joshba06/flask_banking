@@ -1,6 +1,6 @@
 import pytest
 from project.models import Transaction
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from decimal import Decimal
 from project.db import db_session
 
@@ -185,7 +185,7 @@ def test_read_all_partial_description_match(app):
     db_session.add_all([t1, t2, t3])
     db_session.commit()
 
-    transactions = Transaction.read_all(transaction_description="Transaction", search_type="Contains")
+    transactions = Transaction.read_all(transaction_description="Transaction", search_type="Includes")
 
     assert len(transactions) == 3
 
@@ -202,7 +202,7 @@ def test_read_all_date_range(app):
     start_date = today - timedelta(days=7)
     end_date = today - timedelta(days=3)
 
-    transactions = Transaction.read_all(start_date=start_date, end_date=end_date)
+    transactions = Transaction.read_all(start_date=start_date.date(), end_date=end_date.date())
 
     assert len(transactions) == 1
     assert transactions[0].description == "Transaction 2"
@@ -226,17 +226,17 @@ def test_read_all_category(app):
 
 def test_read_all_invalid_start_date(app):
     # Test case: Invalid start_date (not a datetime object)
-    with pytest.raises(ValueError, match="start_date must be a datetime object."):
+    with pytest.raises(ValueError, match="start_date must be a date object."):
         Transaction.read_all(start_date="2023-01-01")
 
 def test_read_all_invalid_end_date(app):
     # Test case: Invalid end_date (not a datetime object)
-    with pytest.raises(ValueError, match="end_date must be a datetime object."):
+    with pytest.raises(ValueError, match="end_date must be a date object."):
         Transaction.read_all(end_date="2023-12-31")
 
 def test_read_all_invalid_search_type(app):
-    # Test case: Invalid search_type (not "Contains" or "Matches")
-    with pytest.raises(ValueError, match="search_type must be either 'Contains' or 'Matches'."):
+    # Test case: Invalid search_type (not "Includes" or "Matches")
+    with pytest.raises(ValueError, match="search_type must be either 'Includes' or 'Matches'."):
         Transaction.read_all(search_type="InvalidSearch")
 
 
