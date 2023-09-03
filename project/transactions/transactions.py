@@ -34,13 +34,13 @@ transactions_bp = Blueprint('transactions', __name__,
 
 # Define forms to be used in this controller
 class TransactionForm(FlaskForm):
-    title = StringField("Transaction title", validators=[DataRequired()])
+    description = StringField("Transaction description", validators=[DataRequired()])
     amount = DecimalField("Amount", places=2, validators=[DataRequired()])
     submit = SubmitField("Add")
 
 class FilterForm(FlaskForm):
     search_type = SelectField('Search type', choices = ["Matches", "Includes"])
-    transaction_title = StringField("Title", render_kw={"placeholder": "Search term"})
+    transaction_description = StringField("Description", render_kw={"placeholder": "Search term"})
     start_date = DateField('Startdate', format='%Y-%m-%d')
     end_date = DateField('Enddate', format='%Y-%m-%d')
     submit = SubmitField("Filter")
@@ -50,6 +50,8 @@ class FilterForm(FlaskForm):
 
 @transactions_bp.route("/", methods=["GET", "POST"])
 def index():
+
+    print("Starting Niklas")
     # Transactions filter
     filter_form = FilterForm()
     if request.method == 'POST' and filter_form.clear.data:
@@ -58,7 +60,7 @@ def index():
         transactions = Transaction.read_all(start_date = filter_form.start_date.data,
                                              end_date=filter_form.end_date.data,
                                              search_type=filter_form.search_type.data,
-                                             transaction_title=filter_form.transaction_title.data)
+                                             transaction_description=filter_form.transaction_description.data)
         grouped_transactions = Transaction.group_by_month(transactions)
     else:
         transactions = Transaction.read_all()
@@ -67,16 +69,16 @@ def index():
     # New transaction
     transaction_form = TransactionForm()
     if transaction_form.validate_on_submit():
-        response = Transaction.create(transaction_form.title.data, transaction_form.amount.data)
+        response = Transaction.create(transaction_form.description.data, transaction_form.amount.data)
         if response:
             return redirect(url_for("transactions.index"))
 
     transactions_sum = 0
-    titles = []
+    descriptions = []
     for transaction in transactions:
-        titles.append(transaction.title)
+        descriptions.append(transaction.description)
         transactions_sum += transaction.amount
-    unique_titles = list(set(titles))
+    unique_descriptions = list(set(descriptions))
 
     ## Display graphs
 
@@ -126,7 +128,7 @@ def index():
     fig_donut.update_traces(hoverinfo='label+value', textinfo='value',
                   marker=dict(colors=colors, line=dict(color='#000000', width=2)))
     fig_donut.update_layout(
-            # title='US Export of Plastic Scrap',
+            # description='US Export of Plastic Scrap',
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             showlegend=False,
@@ -147,7 +149,7 @@ def index():
                     ))
 
     fig_bar.update_layout(
-        # title='US Export of Plastic Scrap',
+        # description='US Export of Plastic Scrap',
         xaxis_tickfont_size=14,
         yaxis=dict(
             title='Amount',
@@ -171,7 +173,7 @@ def index():
     graphJSON_bar = json.dumps(fig_bar, cls=plotly.utils.PlotlyJSONEncoder)
 
     return render_template('transactions/base.html',
-                            unique_titles=unique_titles,
+                            unique_descriptions=unique_descriptions,
                             transactions=transactions,
                             template_form=transaction_form,
                             filter_form=filter_form,
@@ -185,13 +187,13 @@ def index():
 @transactions_bp.route("/transactions", methods=["POST"])
 def create_transaction():
     data = request.json
-    title = data.get('title')
+    description = data.get('description')
     amount = data.get('amount')
 
-    if not title or not amount:
+    if not description or not amount:
         return jsonify({'message': 'Missing parameters'}), 400
 
-    response = Transaction.create(title, amount)
+    response = Transaction.create(description, amount)
 
     if response:
         return redirect(url_for("transactions.index"))

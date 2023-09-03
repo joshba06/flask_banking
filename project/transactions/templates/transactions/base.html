@@ -13,8 +13,8 @@
       <div class="new-transaction">
         <form action="/transactions" method="post">
           {{ template_form.hidden_tag() }}
-          {{ template_form.title.label }}
-          {{ template_form.title() }}
+          {{ template_form.description.label }}
+          {{ template_form.description() }}
           {{ template_form.amount.label }}
           {{ template_form.amount() }}
           {{ template_form.submit() }}
@@ -32,9 +32,9 @@
           {{ filter_form.start_date() }}
           {{ filter_form.end_date.label }}
           {{ filter_form.end_date() }}
-          {{ filter_form.transaction_title.label }}
+          {{ filter_form.transaction_description.label }}
           {{ filter_form.search_type() }}
-          {{ filter_form.transaction_title() }}
+          {{ filter_form.transaction_description() }}
           {{ filter_form.submit() }}
           {{ filter_form.clear() }}
         </form>
@@ -62,7 +62,7 @@
             <thead>
               <tr>
                 <th scope="col">Date <button id="sortButton">Sort Ascending</button></th>
-                <th scope="col">Title [Sort]</th>
+                <th scope="col">Description [Sort]</th>
                 <th scope="col">Amount [Sort]</th>
                 <th scope="col">Saldo</th>
               </tr>
@@ -71,7 +71,7 @@
               {% for transaction in transactions %}
                 <tr>
                   <td>{{ transaction.date_booked.strftime("%d %b, %Y") }}</td>
-                  <td>{{ transaction.title }}</td>
+                  <td>{{ transaction.description }}</td>
                   <td class="value-column">{{ transaction.amount }}</td>
                   <td>{{ transaction.saldo }}</td>
                 </tr>
@@ -99,7 +99,7 @@
     <!-- pass transactions variable to js -->
     <script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
     <script>
-      var unique_titles = JSON.parse('{{ unique_titles|tojson|safe }}');
+      var unique_descriptions = JSON.parse('{{ unique_descriptions|tojson|safe }}');
     </script>
 
     <!-- Plotly -->

@@ -10,16 +10,16 @@ class Transaction(Base):
 
     __tablename__ = "transactions"
     id = Column(Integer, primary_key = True)
-    title = Column(String(80), index = True)
+    description = Column(String(80), index = True)
     amount = Column(Numeric(precision=10, scale=2), nullable=False, index = False, unique = False)
     saldo = Column(Numeric(precision=10, scale=2), nullable=True, index = False, unique = False)
     date_booked = Column(DateTime, nullable=False)
 
-    def __init__(self, title, amount, date_booked=None):
-        if not isinstance(title, str) or len(title) > 80:
-            raise ValueError("The 'title' variable must be a string with less than 80 characters.")
+    def __init__(self, description, amount, date_booked=None):
+        if not isinstance(description, str) or len(description) > 80:
+            raise ValueError("The 'description' variable must be a string with less than 80 characters.")
         else:
-            self.title = title
+            self.description = description
 
         if not isinstance(amount, (int, float, decimal.Decimal)):
             raise ValueError("The 'amount' variable must be a decimal, integer or float.")
@@ -36,7 +36,7 @@ class Transaction(Base):
         self.saldo = None
 
     def __repr__(self):
-        return "[{}] title: '{}', amount: {:.2f}, saldo: {}".format(self.date_booked, self.title, self.amount, self.saldo)
+        return "[{}] description: '{}', amount: {:.2f}, saldo: {}".format(self.date_booked, self.description, self.amount, self.saldo)
 
     def calculate_saldo(self):
             # Calculate the saldo by summing up the "amount" of older transactions
@@ -57,7 +57,7 @@ class Transaction(Base):
             db_session.commit()
 
     @classmethod
-    def read_all(cls, start_date = None, end_date = None, search_type = None, transaction_title = None):
+    def read_all(cls, start_date = None, end_date = None, search_type = None, transaction_description = None):
 
         # Check input parameters
         if start_date is not None and not isinstance(start_date, datetime):
@@ -69,16 +69,19 @@ class Transaction(Base):
         if search_type not in [None, "Contains", "Matches"]:
             raise ValueError("search_type must be either 'Contains' or 'Matches'.")
 
-        # print("Filtering start: {}, end: {}, search type: {}, title: {},".format(start_date, end_date, search_type, transaction_title))
+        # print("Filtering start: {}, end: {}, search type: {}, description: {},".format(start_date, end_date, search_type, transaction_description))
 
-        # Query database for title
-        if transaction_title != None and transaction_title != "":
+        # Query database for description
+        if transaction_description != None and transaction_description != "":
             if search_type == "Matches":
-                transactions = Transaction.query.filter(Transaction.title == transaction_title).all()
+                transactions = Transaction.query.filter(Transaction.description == transaction_description).all()
             else:
-                transactions = Transaction.query.filter(Transaction.title.like("%{}%".format(transaction_title))).all()
+                transactions = Transaction.query.filter(Transaction.description.like("%{}%".format(transaction_description))).all()
         else:
             transactions = Transaction.query.order_by(desc(Transaction.date_booked)).all()
+            # print(Transaction)
+            # print(Transaction.query.all())
+            # transactions = Transaction.query.all()
 
 
         # Filter results for dates

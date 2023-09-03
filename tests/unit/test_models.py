@@ -16,9 +16,9 @@ def test_default_date_booked(app):
     assert isinstance(transaction.date_booked, datetime)
     assert transaction.date_booked.date() == datetime.now().date()
 
-def test_long_title(app):
-    # Test that a ValueError is raised when the title is too long
-    with pytest.raises(ValueError, match="The 'title' variable must be a string with less than 80 characters."):
+def test_long_description(app):
+    # Test that a ValueError is raised when the description is too long
+    with pytest.raises(ValueError, match="The 'description' variable must be a string with less than 80 characters."):
         Transaction("A" * 81, 100.00)
 
 def test_invalid_amount_type(app):
@@ -32,12 +32,12 @@ def test_invalid_date_booked_type(app):
         Transaction("Test Transaction", 100.00, date_booked="invalid_date")
 
 def test_valid_transaction(app):
-    title = "Valid Transaction"
+    description = "Valid Transaction"
     amount = 100.50
     date_booked = datetime(2023, 9, 1, 12, 0, 0)
-    transaction = Transaction(title, amount, date_booked)
+    transaction = Transaction(description, amount, date_booked)
 
-    assert transaction.title == title
+    assert transaction.description == description
     assert transaction.amount == Decimal("100.50")
     assert transaction.date_booked == date_booked
 
@@ -151,33 +151,33 @@ def test_read_all_no_filters(app):
     newest_transaction = transactions[0]
     oldest_transaction = transactions[-1]
 
-    assert newest_transaction == db_session.query(Transaction).filter_by(title='Groceries').all()[0]
-    assert oldest_transaction == db_session.query(Transaction).filter_by(title='Dining').all()[0]
+    assert newest_transaction == db_session.query(Transaction).filter_by(description='Groceries').all()[0]
+    assert oldest_transaction == db_session.query(Transaction).filter_by(description='Dining').all()[0]
 
 
-def test_read_all_exact_title_match(app):
-    # Create test transactions with specific titles
-    t1 = Transaction(title="Test Transaction 1", amount=100.00, date_booked=datetime.now())
-    t2 = Transaction(title="Test Transaction 2", amount=200.00, date_booked=datetime.now())
-    t3 = Transaction(title="Another Transaction", amount=50.00, date_booked=datetime.now())
+def test_read_all_exact_description_match(app):
+    # Create test transactions with specific descriptions
+    t1 = Transaction(description="Test Transaction 1", amount=100.00, date_booked=datetime.now())
+    t2 = Transaction(description="Test Transaction 2", amount=200.00, date_booked=datetime.now())
+    t3 = Transaction(description="Another Transaction", amount=50.00, date_booked=datetime.now())
     db_session.add_all([t1, t2, t3])
     db_session.commit()
 
-    transactions = Transaction.read_all(transaction_title="Test Transaction 1", search_type="Matches")
+    transactions = Transaction.read_all(transaction_description="Test Transaction 1", search_type="Matches")
 
     assert len(transactions) == 1
-    assert transactions[0].title == "Test Transaction 1"
+    assert transactions[0].description == "Test Transaction 1"
 
 
-def test_read_all_partial_title_match(app):
-    # Create test transactions with specific titles
-    t1 = Transaction(title="Test Transaction 1", amount=100.00, date_booked=datetime.now())
-    t2 = Transaction(title="Test Transaction 2", amount=200.00, date_booked=datetime.now())
-    t3 = Transaction(title="Another Transaction", amount=50.00, date_booked=datetime.now())
+def test_read_all_partial_description_match(app):
+    # Create test transactions with specific descriptions
+    t1 = Transaction(description="Test Transaction 1", amount=100.00, date_booked=datetime.now())
+    t2 = Transaction(description="Test Transaction 2", amount=200.00, date_booked=datetime.now())
+    t3 = Transaction(description="Another Transaction", amount=50.00, date_booked=datetime.now())
     db_session.add_all([t1, t2, t3])
     db_session.commit()
 
-    transactions = Transaction.read_all(transaction_title="Transaction", search_type="Contains")
+    transactions = Transaction.read_all(transaction_description="Transaction", search_type="Contains")
 
     assert len(transactions) == 3
 
@@ -185,9 +185,9 @@ def test_read_all_partial_title_match(app):
 def test_read_all_date_range(app):
     # Create test transactions with specific dates
     today = datetime.now()
-    t1 = Transaction(title="Transaction 1", amount=100.00, date_booked=today)
-    t2 = Transaction(title="Transaction 2", amount=200.00, date_booked=today - timedelta(days=5))
-    t3 = Transaction(title="Transaction 3", amount=50.00, date_booked=today - timedelta(days=10))
+    t1 = Transaction(description="Transaction 1", amount=100.00, date_booked=today)
+    t2 = Transaction(description="Transaction 2", amount=200.00, date_booked=today - timedelta(days=5))
+    t3 = Transaction(description="Transaction 3", amount=50.00, date_booked=today - timedelta(days=10))
     db_session.add_all([t1, t2, t3])
     db_session.commit()
 
@@ -197,7 +197,7 @@ def test_read_all_date_range(app):
     transactions = Transaction.read_all(start_date=start_date, end_date=end_date)
 
     assert len(transactions) == 1
-    assert transactions[0].title == "Transaction 2"
+    assert transactions[0].description == "Transaction 2"
 
 
 def test_read_all_invalid_start_date(app):
@@ -219,8 +219,8 @@ def test_read_all_invalid_search_type(app):
 def test_group_by_month_valid_input():
     # Test case: Valid input
     transactions = [
-        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
-        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
+        Transaction(description="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(description="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
     ]
     result = Transaction.group_by_month(transactions)
     assert isinstance(result, dict)
@@ -237,9 +237,9 @@ def test_group_by_month_invalid_input_not_transaction_objects():
 
 def test_group_by_month_data_calculation():
     transactions = [
-        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
-        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
-        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
+        Transaction(description="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(description="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
+        Transaction(description="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
     ]
     result = Transaction.group_by_month(transactions)
 
@@ -263,7 +263,7 @@ def test_group_by_month_empty_input():
 def test_group_by_month_single_transaction():
     # Test case: Input with a single transaction
     transactions = [
-        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15))
+        Transaction(description="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15))
     ]
     result = Transaction.group_by_month(transactions)
     assert len(result) == 1  # Expect one year
@@ -274,9 +274,9 @@ def test_group_by_month_single_transaction():
 def test_group_by_month_multiple_years():
     # Test case: Input with transactions spanning multiple years
     transactions = [
-        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2022, 12, 15)),
-        Transaction(title="Income 2", amount=200.00, date_booked=datetime(2023, 1, 5)),
-        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 2, 20)),
+        Transaction(description="Income 1", amount=100.00, date_booked=datetime(2022, 12, 15)),
+        Transaction(description="Income 2", amount=200.00, date_booked=datetime(2023, 1, 5)),
+        Transaction(description="Expense 1", amount=-50.00, date_booked=datetime(2023, 2, 20)),
     ]
     result = Transaction.group_by_month(transactions)
     assert len(result) == 2  # Expect two years (2022 and 2023)
@@ -289,9 +289,9 @@ def test_group_by_month_multiple_years():
 def test_group_by_month_mixed_income_expense():
     # Test case: Input with mixed income and expense transactions
     transactions = [
-        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
-        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
-        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
+        Transaction(description="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(description="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 20)),
+        Transaction(description="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
     ]
     result = Transaction.group_by_month(transactions)
     assert result[2023][1]["income"] == 100.00  # January income
@@ -304,8 +304,8 @@ def test_group_by_month_mixed_income_expense():
 def test_group_by_month_negative_amounts_only():
     # Test case: Input with transactions having only negative amounts
     transactions = [
-        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 15)),
-        Transaction(title="Expense 2", amount=-75.00, date_booked=datetime(2023, 2, 5)),
+        Transaction(description="Expense 1", amount=-50.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(description="Expense 2", amount=-75.00, date_booked=datetime(2023, 2, 5)),
     ]
     result = Transaction.group_by_month(transactions)
     assert result[2023][1]["income"] == 0  # January income
@@ -318,8 +318,8 @@ def test_group_by_month_negative_amounts_only():
 def test_group_by_month_positive_amounts_only():
     # Test case: Input with transactions having only positive amounts
     transactions = [
-        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
-        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
+        Transaction(description="Income 1", amount=100.00, date_booked=datetime(2023, 1, 15)),
+        Transaction(description="Income 2", amount=75.00, date_booked=datetime(2023, 2, 5)),
     ]
     result = Transaction.group_by_month(transactions)
     assert result[2023][1]["income"] == 100.00  # January income
@@ -332,32 +332,32 @@ def test_group_by_month_multiple_years_months():
     # Test case: Input with transactions spanning 4 years (2022 to 2025) and 5 months per year
     transactions = [
         # Year 2022
-        Transaction(title="Income 1", amount=100.00, date_booked=datetime(2022, 1, 15)),
-        Transaction(title="Expense 1", amount=-50.00, date_booked=datetime(2022, 2, 20)),
-        Transaction(title="Income 2", amount=75.00, date_booked=datetime(2022, 3, 5)),
-        Transaction(title="Income 3", amount=120.00, date_booked=datetime(2022, 4, 10)),
-        Transaction(title="Expense 2", amount=-80.00, date_booked=datetime(2022, 5, 15)),
+        Transaction(description="Income 1", amount=100.00, date_booked=datetime(2022, 1, 15)),
+        Transaction(description="Expense 1", amount=-50.00, date_booked=datetime(2022, 2, 20)),
+        Transaction(description="Income 2", amount=75.00, date_booked=datetime(2022, 3, 5)),
+        Transaction(description="Income 3", amount=120.00, date_booked=datetime(2022, 4, 10)),
+        Transaction(description="Expense 2", amount=-80.00, date_booked=datetime(2022, 5, 15)),
 
         # Year 2023
-        Transaction(title="Income 4", amount=200.00, date_booked=datetime(2023, 1, 2)),
-        Transaction(title="Expense 3", amount=-60.00, date_booked=datetime(2023, 2, 5)),
-        Transaction(title="Income 5", amount=90.00, date_booked=datetime(2023, 3, 12)),
-        Transaction(title="Expense 4", amount=-70.00, date_booked=datetime(2023, 4, 18)),
-        Transaction(title="Income 6", amount=150.00, date_booked=datetime(2023, 5, 25)),
+        Transaction(description="Income 4", amount=200.00, date_booked=datetime(2023, 1, 2)),
+        Transaction(description="Expense 3", amount=-60.00, date_booked=datetime(2023, 2, 5)),
+        Transaction(description="Income 5", amount=90.00, date_booked=datetime(2023, 3, 12)),
+        Transaction(description="Expense 4", amount=-70.00, date_booked=datetime(2023, 4, 18)),
+        Transaction(description="Income 6", amount=150.00, date_booked=datetime(2023, 5, 25)),
 
         # Year 2024
-        Transaction(title="Expense 5", amount=-40.00, date_booked=datetime(2024, 1, 7)),
-        Transaction(title="Income 7", amount=80.00, date_booked=datetime(2024, 2, 11)),
-        Transaction(title="Income 8", amount=110.00, date_booked=datetime(2024, 3, 15)),
-        Transaction(title="Expense 6", amount=-55.00, date_booked=datetime(2024, 4, 20)),
-        Transaction(title="Income 9", amount=130.00, date_booked=datetime(2024, 5, 30)),
+        Transaction(description="Expense 5", amount=-40.00, date_booked=datetime(2024, 1, 7)),
+        Transaction(description="Income 7", amount=80.00, date_booked=datetime(2024, 2, 11)),
+        Transaction(description="Income 8", amount=110.00, date_booked=datetime(2024, 3, 15)),
+        Transaction(description="Expense 6", amount=-55.00, date_booked=datetime(2024, 4, 20)),
+        Transaction(description="Income 9", amount=130.00, date_booked=datetime(2024, 5, 30)),
 
         # Year 2025
-        Transaction(title="Income 10", amount=70.00, date_booked=datetime(2025, 1, 4)),
-        Transaction(title="Expense 7", amount=-30.00, date_booked=datetime(2025, 2, 9)),
-        Transaction(title="Income 11", amount=140.00, date_booked=datetime(2025, 3, 16)),
-        Transaction(title="Expense 8", amount=-45.00, date_booked=datetime(2025, 4, 22)),
-        Transaction(title="Income 12", amount=95.00, date_booked=datetime(2025, 5, 28)),
+        Transaction(description="Income 10", amount=70.00, date_booked=datetime(2025, 1, 4)),
+        Transaction(description="Expense 7", amount=-30.00, date_booked=datetime(2025, 2, 9)),
+        Transaction(description="Income 11", amount=140.00, date_booked=datetime(2025, 3, 16)),
+        Transaction(description="Expense 8", amount=-45.00, date_booked=datetime(2025, 4, 22)),
+        Transaction(description="Income 12", amount=95.00, date_booked=datetime(2025, 5, 28)),
     ]
     result = Transaction.group_by_month(transactions)
 
