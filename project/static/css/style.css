@@ -8,6 +8,16 @@ body {
   margin: 0px auto;
 }
 
+#div-manage-new-transaction {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
 .menu-bar {
   margin-top: 20px;
   padding-top: 10px;
@@ -16,7 +26,6 @@ body {
   padding-right: 10px;
   display: flex;
   justify-content: space-between;
-  border: 1px solid black;
 }
 
 .account-selector {
@@ -24,48 +33,66 @@ body {
   padding-bottom: 10px;
   padding-left: 10px;
   padding-right: 10px;
-  /* border-bottom: 1px solid gray; */
-  border: 1px solid black;
+  border-bottom: 1px solid gray;
 }
 
 /* Form styling */
-#new-transaction #search_type {
+.form-new-transaction {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+#filter-transaction #search_type {
   height: 30px;
 }
-#new-transaction #start_date {
+#filter-transaction #start_date {
   height: 30px;
 }
-#new-transaction #end_date {
+#filter-transaction #end_date {
   height: 30px;
 }
+#filter-transaction #transaction_description {
+  height: 30px;
+}
+#filter-transaction #submit {
+  height: 30px;
+}
+#filter-transaction #clear {
+  height: 30px;
+}
+#filter-transaction #category {
+  height: 30px;
+}
+
 #new-transaction #transaction_description {
   height: 30px;
 }
 #new-transaction #submit {
   height: 30px;
 }
-#new-transaction #clear {
+#new-transaction #category {
+  height: 30px;
+}
+#new-transaction #amount {
   height: 30px;
 }
 
 
-.new-transaction {
-  display: flex;
-  justify-content: space-around;
-  padding-left: 10px;
-  padding-right: 10px;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  /* border-bottom: 1px solid gray; */
-  border: 1px solid black;
-}
+
 
 .transactions-window {
   padding-left: 10px;
   padding-right: 10px;
   padding-top: 20px;
   padding-bottom: 20px;
-  border: 1px solid black;
 }
 
 .transactions-filter {
@@ -96,10 +123,8 @@ td {
 .transaction-statistics {
   display: flex;
   justify-content: space-evenly;
-  /* border: 1px solid black; */
 }
 .transaction-statistics .left {
-  border: 1px solid black;
   width: 30%;
 }
 
@@ -110,6 +135,5 @@ td {
 }
 
 .transaction-statistics .right {
-  /* border: 1px solid black; */
   width: 70%;
 }

@@ -13,9 +13,10 @@ class Transaction(Base):
     description = Column(String(80), index = True)
     amount = Column(Numeric(precision=10, scale=2), nullable=False, index = False, unique = False)
     saldo = Column(Numeric(precision=10, scale=2), nullable=True, index = False, unique = False)
+    category = Column(String(20), nullable=False)
     date_booked = Column(DateTime, nullable=False)
 
-    def __init__(self, description, amount, date_booked=None):
+    def __init__(self, description, amount, category, date_booked=None):
         if not isinstance(description, str) or len(description) > 80:
             raise ValueError("The 'description' variable must be a string with less than 80 characters.")
         else:
@@ -25,6 +26,10 @@ class Transaction(Base):
             raise ValueError("The 'amount' variable must be a decimal, integer or float.")
         else:
             self.amount = decimal.Decimal(amount)
+
+        if category not in ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
+            raise ValueError("Invalid category value.")
+        self.category = category
 
         if date_booked == None:
             self.date_booked = datetime.now()
@@ -36,7 +41,7 @@ class Transaction(Base):
         self.saldo = None
 
     def __repr__(self):
-        return "[{}] description: '{}', amount: {:.2f}, saldo: {}".format(self.date_booked, self.description, self.amount, self.saldo)
+        return "[{}] description: '{}', category: {}, amount: {:.2f}, saldo: {}".format(self.date_booked, self.description, self.category, self.amount, self.saldo)
 
     def calculate_saldo(self):
             # Calculate the saldo by summing up the "amount" of older transactions
@@ -57,7 +62,7 @@ class Transaction(Base):
             db_session.commit()
 
     @classmethod
-    def read_all(cls, start_date = None, end_date = None, search_type = None, transaction_description = None):
+    def read_all(cls, start_date = None, end_date = None, category = None, search_type = None, transaction_description = None):
 
         # Check input parameters
         if start_date is not None and not isinstance(start_date, datetime):
@@ -69,6 +74,10 @@ class Transaction(Base):
         if search_type not in [None, "Contains", "Matches"]:
             raise ValueError("search_type must be either 'Contains' or 'Matches'.")
 
+        # Check category
+        if category not in [None, "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
+            raise ValueError("Invalid category value.")
+
         # print("Filtering start: {}, end: {}, search type: {}, description: {},".format(start_date, end_date, search_type, transaction_description))
 
         # Query database for description
@@ -79,10 +88,6 @@ class Transaction(Base):
                 transactions = Transaction.query.filter(Transaction.description.like("%{}%".format(transaction_description))).all()
         else:
             transactions = Transaction.query.order_by(desc(Transaction.date_booked)).all()
-            # print(Transaction)
-            # print(Transaction.query.all())
-            # transactions = Transaction.query.all()
-
 
         # Filter results for dates
         if start_date != None and end_date != None:
@@ -97,6 +102,11 @@ class Transaction(Base):
             filtered_transactions = [transaction for transaction in transactions if transaction.date_booked.date() <= end_date]
         else:
             filtered_transactions = transactions
+
+        # Filter results for category
+        if category != None:
+            temp = [transaction for transaction in filtered_transactions if transaction.category == category]
+            filtered_transactions = temp
 
         sorted_filtered_transactions = sorted(filtered_transactions, key=lambda x: x.date_booked, reverse=True)
 

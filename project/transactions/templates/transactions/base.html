@@ -10,29 +10,34 @@
   </head>
   <body>
     <div class="main-container">
-      <div class="new-transaction">
-        <form action="/transactions" method="post" >
+      <div id="div-manage-new-transaction">
+        <a href="#" id="btn-add-transaction" class="btn btn-success">New transaction</a>
+        <a href="#" id="btn-cancel-add-transaction" class="btn btn-danger" style="display:none;">Cancel</a>
+      </div>
+
+      <div id="new-transaction" style="display:none;">
+        <form action="/" method="post" >
           {{ template_form.hidden_tag() }}
-          {{ template_form.description.label }}
           {{ template_form.description() }}
-          {{ template_form.amount.label }}
+          {{ template_form.category() }}
           {{ template_form.amount() }}
           {{ template_form.submit() }}
         </form>
       </div>
 
       <div class="account-selector">
-        <h1>Main Account</h1>
+        <h1>Financial Overview</h1>
       </div>
 
       <div class="transactions-filter">
-        <form action="/" method="post" id="new-transaction">
+        <form action="/" method="post" id="filter-transaction">
           {{ filter_form.hidden_tag() }}
           {{ filter_form.start_date() }}
           To
           {{ filter_form.end_date() }}
           {{ filter_form.search_type() }}
           {{ filter_form.transaction_description() }}
+          {{ filter_form.category() }}
           {{ filter_form.submit() }}
           {{ filter_form.clear() }}
         </form>
@@ -49,7 +54,7 @@
 
       <div class="menu-bar">
         <form>
-          <input type="text" id="autocomplete" placeholder="Search">
+          <!-- <input type="text" id="autocomplete" placeholder="Search"> -->
         </form>
 
       </div>
@@ -71,7 +76,7 @@
                 <tr>
                   <td  class="transaction-date">{{ transaction.date_booked.strftime("%d/%m/%y") }}</td>
                   <td>{{ transaction.description }}</td>
-                  <td>tag, tag</td>
+                  <td>{{ transaction.category }}</td>
                   <td class="col-row-amount text-right">{{ transaction.amount }}</td>
                   <td class="col-row-saldo text-right">{{ transaction.saldo }}</td>
                 </tr>
@@ -115,6 +120,8 @@
       graph_donut.config = { displayModeBar: false };
       Plotly.plot('chart_donut', graph_donut, {});
     </script>
+
+    <script src="{{ url_for('static', filename='js/button_actions.js') }}"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>

@@ -4,8 +4,7 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, jsonify
 )
-# Database connection
-# from project.db import get_db
+
 
 # Forms
 from flask_wtf import FlaskForm
@@ -24,6 +23,7 @@ import functools
 
 # Models
 from project.models import Transaction
+from project.db import db_session
 
 
 # Define the name of this blueprint and which url its reached under. This has to be registered in create_app()
@@ -34,13 +34,15 @@ transactions_bp = Blueprint('transactions', __name__,
 
 # Define forms to be used in this controller
 class TransactionForm(FlaskForm):
-    description = StringField("Transaction description", validators=[DataRequired()])
-    amount = DecimalField("Amount", places=2, validators=[DataRequired()])
+    description = StringField("Transaction description", validators=[DataRequired()], render_kw={"placeholder": "Description"})
+    category = SelectField("Category", choices = ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"])
+    amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
     submit = SubmitField("Add")
 
 class FilterForm(FlaskForm):
     search_type = SelectField('Search type', choices = ["Matches", "Includes"])
     transaction_description = StringField("Description", render_kw={"placeholder": "Filter description"})
+    category = SelectField("Category", choices = ["-Category-", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"])
     start_date = DateField('Startdate', format='%Y-%m-%d')
     end_date = DateField('Enddate', format='%Y-%m-%d')
     submit = SubmitField("Filter")
@@ -56,8 +58,10 @@ def index():
     if request.method == 'POST' and filter_form.clear.data:
         return redirect(url_for("transactions.index"))
     elif request.method == 'POST' and filter_form.submit.data:
+        category = None if filter_form.category.data == "-Category-" else filter_form.category.data
         transactions = Transaction.read_all(start_date = filter_form.start_date.data,
                                              end_date=filter_form.end_date.data,
+                                             category=category,
                                              search_type=filter_form.search_type.data,
                                              transaction_description=filter_form.transaction_description.data)
         grouped_transactions = Transaction.group_by_month(transactions)
@@ -68,9 +72,15 @@ def index():
     # New transaction
     transaction_form = TransactionForm()
     if transaction_form.validate_on_submit():
-        response = Transaction.create(transaction_form.description.data, transaction_form.amount.data)
-        if response:
+        new_transaction = Transaction(transaction_form.description.data, transaction_form.amount.data, transaction_form.category.data)
+        try:
+            db_session.add(new_transaction)
+            db_session.commit()
+            new_transaction.calculate_saldo()
             return redirect(url_for("transactions.index"))
+        except:
+            print("Something went wrong")
+
 
     transactions_sum = 0
     descriptions = []
@@ -92,7 +102,10 @@ def index():
         current_date = first_date
 
         while current_date <= last_date:
-            data_y.append("{}/{}".format(current_date.month, current_date.year))
+            if current_date.month < 10:
+                data_y.append("0{}/{}".format(current_date.month, current_date.year))
+            else:
+                data_y.append("{}/{}".format(current_date.month, current_date.year))
 
             if current_date.year in grouped_transactions.keys():
                 if current_date.month in grouped_transactions[current_date.year].keys():
@@ -119,21 +132,30 @@ def index():
         data_neg.append(0)
         data_sum.append(0)
 
+    # Donut chart - only expenses
+    expenses_per_category = {
+        "Salary": 0,
+        "Rent": 0,
+        "Utilities": 0,
+        "Groceries": 0,
+        "Night out": 0,
+        "Online services": 0
+    }
+    for transaction in transactions:
+        if transaction.amount < 0:
+            expenses_per_category[transaction.category] += transaction.amount
 
+    colors = ["#3F3B6C", "#624F82", "#9F73AB", "#A3C7D6", "#A3C7D6", "#A3C7D6"]
 
-    # Playing around with donut chart
-    
-
-    #
-
-    # Donut chart
     if len(transactions) == 0:
-        values = [1, 1]
+        values = [0, 0, 0, 0, 0, 0]
+        labels = list(expenses_per_category.keys())
     else:
-        values = [sum(data_pos), sum(data_neg)]
-    labels = ['Income','Expenses']
-    colors = ["#3F3B6C", "#624F82", "#9F73AB", "#A3C7D6"]
-
+        labels = []
+        values = []
+        for key, val in expenses_per_category.items():
+            labels.append(key)
+            values.append(float(-1*val))
 
     fig_donut = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7)])
     fig_donut.update_traces(hoverinfo='label+value',
@@ -144,8 +166,15 @@ def index():
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(t=0, b=0, l=0, r=0),
-            annotations=[dict(text='Expenses', x=0.5, y=0.5, font_size=20, showarrow=False)]
+            legend=dict(
+                y=0.5,
+            )
         )
+    if len(transactions) == 0:
+        fig_donut.update_layout(annotations=[dict(text='No results', x=0.5, y=0.5, font_size=20, showarrow=False)])
+    else:
+        fig_donut.update_layout(annotations=[dict(text='Expenses', x=0.5, y=0.5, font_size=20, showarrow=False)])
+
     graphJSON_donut = json.dumps(fig_donut, cls=plotly.utils.PlotlyJSONEncoder)
 
     # Bar chart
@@ -162,7 +191,6 @@ def index():
                     ))
 
     fig_bar.update_layout(
-        # description='US Export of Plastic Scrap',
         xaxis_tickfont_size=14,
         yaxis=dict(
             title='Amount',
@@ -172,13 +200,6 @@ def index():
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         showlegend=False,
-
-        # legend=dict(
-        #     x=0,
-        #     y=1.0,
-        #     bgcolor='rgba(255, 255, 255, 0)',
-        #     bordercolor='rgba(255, 255, 255, 0)'
-        # ),
         barmode='group',
         bargap=0.15, # gap between bars of adjacent location coordinates.
         bargroupgap=0.1 # gap between bars of the same location coordinate.
