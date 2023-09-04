@@ -1,4 +1,5 @@
 .venv/
+newbanking/
 
 *.pyc
 __pycache__/
@@ -13,7 +14,7 @@ dist/
 build/
 *.egg-info/
 
-newbanking/
+
 
 .DS_Store
 

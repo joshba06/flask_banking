@@ -1,6 +1,6 @@
 import pytest
 from project.models import Transaction
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from decimal import Decimal
 from project.db import db_session
 
@@ -206,8 +206,6 @@ def test_read_all_date_range(app):
 
     assert len(transactions) == 1
     assert transactions[0].description == "Transaction 2"
-
-
 
 
 def test_read_all_category(app):

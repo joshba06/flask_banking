@@ -1,10 +1,7 @@
-## Controller with routes
-
 # Flask
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, jsonify
+    Blueprint, redirect, render_template, request, url_for, jsonify, abort
 )
-
 
 # Forms
 from flask_wtf import FlaskForm
@@ -19,7 +16,6 @@ import json
 # Basics
 from datetime import datetime, date
 from pprint import pprint
-import functools
 
 # Models
 from project.models import Transaction
@@ -49,7 +45,7 @@ class FilterForm(FlaskForm):
     clear = SubmitField("Clear")
 
 
-
+## App routes
 @transactions_bp.route("/", methods=["GET", "POST"])
 def index():
 
@@ -165,7 +161,7 @@ def index():
     fig_donut.update_layout(
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(t=0, b=0, l=0, r=0),
+            margin=dict(t=0, b=0, l=1, r=0),
             legend=dict(
                 y=0.5,
             )
@@ -218,17 +214,67 @@ def index():
 
 
 
+## API endpoints
+def transactions_to_json(transaction_list):
+    json_transactions = []
+    for transaction in transaction_list:
+        transaction_dict = {
+            "id": str(transaction.id),
+            "amount": str(transaction.amount),
+            "saldo": str(transaction.saldo),
+            "description": transaction.description,
+            "category": transaction.category,
+            "date_booked": transaction.date_booked.isoformat()
+        }
+        json_transactions.append(transaction_dict)
+    return json_transactions
 
-@transactions_bp.route("/transactions", methods=["POST"])
-def create_transaction():
-    data = request.json
-    description = data.get('description')
-    amount = data.get('amount')
+# Read all transactions
+def read_all():
+    return transactions_to_json(Transaction.query.all())
 
-    if not description or not amount:
-        return jsonify({'message': 'Missing parameters'}), 400
+# Read single transaction
+def read_one(id):
+    data = Transaction.query.get(id)
+    if data:
+        return transactions_to_json([data])
+    else:
+        abort(
+            404, f"Transaction with id {id} not found"
+        )
 
-    response = Transaction.create(description, amount)
+# Create a transaction
+def create(transaction):
+    transaction = dict(description=transaction.get("description"),amount=transaction.get("amount"), category=transaction.get("category"), date_booked=transaction.get("date_booked"))
 
-    if response:
-        return redirect(url_for("transactions.index"))
+    # Validate request data
+    if transaction["description"] == None or len(transaction["description"]) > 80:
+        return jsonify({'error': 'Invalid or missing description'}), 400
+
+    if not isinstance(transaction["amount"], (int, float)):
+        return jsonify({'error': 'Invalid or missing amount'}), 400
+
+    if transaction["category"] not in ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
+        return jsonify({'error': 'Invalid category value'}), 400
+
+    if transaction["date_booked"] != None and transaction["date_booked"] != "None":
+        try:
+            transaction["date_booked"] = datetime.fromisoformat(transaction["date_booked"].replace('Z', '+00:00'))
+        except:
+            return jsonify({'error': 'Could not convert date_booked to datetime object,'}), 400
+
+    # Create a new Transaction object
+    new_transaction = Transaction(**transaction)
+    db_session.add(new_transaction)
+    db_session.commit()
+    new_transaction.calculate_saldo()
+
+    # Return a success response
+    return jsonify({
+        'id': new_transaction.id,
+        'description': new_transaction.description,
+        'amount': float(new_transaction.amount),
+        'category': new_transaction.category,
+        'date_booked': new_transaction.date_booked.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'saldo': float(new_transaction.saldo)
+    }), 201
