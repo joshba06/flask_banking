@@ -60,12 +60,7 @@ def test_read_all(client, sample_transactions):
     assert str(Transaction.query.get(data_json[0]["id"]).amount) == data_json[0]["amount"]
     assert Transaction.query.get(data_json[0]["id"]).category == data_json[0]["category"]
     assert Transaction.query.get(data_json[0]["id"]).date_booked.isoformat() == data_json[0]["date_booked"]
-
-headers={
-    'Content-type':'application/json',
-    'Accept':'application/json'
-}
-
+    
 # Test case for creating a transaction with valid data
 def test_create_valid_transaction(client):
     response = client.post(f"{BASE_URL}/transactions", json=valid_transaction_data)

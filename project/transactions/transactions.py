@@ -1,10 +1,7 @@
-## Controller with routes
-
 # Flask
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, jsonify, abort
+    Blueprint, redirect, render_template, request, url_for, jsonify, abort
 )
-
 
 # Forms
 from flask_wtf import FlaskForm
@@ -19,7 +16,6 @@ import json
 # Basics
 from datetime import datetime, date
 from pprint import pprint
-import functools
 
 # Models
 from project.models import Transaction
@@ -49,7 +45,7 @@ class FilterForm(FlaskForm):
     clear = SubmitField("Clear")
 
 
-
+## App routes
 @transactions_bp.route("/", methods=["GET", "POST"])
 def index():
 
@@ -221,7 +217,6 @@ def index():
 ## API endpoints
 def transactions_to_json(transaction_list):
     json_transactions = []
-
     for transaction in transaction_list:
         transaction_dict = {
             "id": str(transaction.id),
@@ -251,6 +246,7 @@ def read_one(id):
 # Create a transaction
 def create(transaction):
     transaction = dict(description=transaction.get("description"),amount=transaction.get("amount"), category=transaction.get("category"), date_booked=transaction.get("date_booked"))
+
     # Validate request data
     if transaction["description"] == None or len(transaction["description"]) > 80:
         return jsonify({'error': 'Invalid or missing description'}), 400
