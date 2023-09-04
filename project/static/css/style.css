@@ -10,9 +10,14 @@ body {
 
 #div-manage-new-transaction {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   padding-top: 20px;
 }
+
+/* div {
+  border: 1px solid #000000;
+} */
 
 .hidden {
   display: none;
@@ -29,7 +34,7 @@ body {
 }
 
 .account-selector {
-  padding-top: 10px;
+  padding-top: 20px;
   padding-bottom: 10px;
   padding-left: 10px;
   padding-right: 10px;
@@ -121,6 +126,7 @@ td {
 }
 
 .transaction-statistics {
+
   display: flex;
   justify-content: space-evenly;
 }
