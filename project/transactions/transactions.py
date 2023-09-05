@@ -46,7 +46,7 @@ class FilterForm(FlaskForm):
 
 
 ## App routes
-@transactions_bp.route("/", methods=["GET"])
+@transactions_bp.route("/", methods=["GET", "POST"])
 def index():
 
     # Transactions filter
