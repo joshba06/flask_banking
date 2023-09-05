@@ -11,7 +11,8 @@ def create_app(test_setup=False):
 
     app.app.config.from_mapping(
         SECRET_KEY='dev',
-        DATABASE=os.path.join(app.app.instance_path, 'project.db'),
+        # DATABASE=os.path.join(app.app.instance_path, 'project.db'),
+        DATABASE="postgres://xgddftjrziqhqk:d7f5f33f60928440df4c321de7e065626dbba68de80759c10494f9e0be45dfd3@ec2-54-195-24-35.eu-west-1.compute.amazonaws.com:5432/dd8mg05p9fvoj",
     )
 
     from project.db import init_db
