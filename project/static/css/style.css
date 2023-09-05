@@ -23,16 +23,6 @@ body {
   display: none;
 }
 
-.menu-bar {
-  margin-top: 20px;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  padding-left: 10px;
-  padding-right: 10px;
-  display: flex;
-  justify-content: space-between;
-}
-
 .account-selector {
   padding-top: 20px;
   padding-bottom: 10px;

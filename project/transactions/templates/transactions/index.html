@@ -37,7 +37,7 @@
         To
         {{ filter_form.end_date() }}
         {{ filter_form.search_type() }}
-        {{ filter_form.transaction_description() }}
+        {{ filter_form.transaction_description(id="autocomplete") }}
         {{ filter_form.category() }}
         {{ filter_form.submit() }}
         {{ filter_form.clear() }}
@@ -51,13 +51,6 @@
       <div class="right">
         <div id='chart_bar' class='chart'></div>
       </div>
-    </div>
-
-    <div class="menu-bar">
-      <form>
-        <!-- <input type="text" id="autocomplete" placeholder="Search"> -->
-      </form>
-
     </div>
 
     <div class="transactions-window">
