@@ -141,7 +141,7 @@ def index():
         if transaction.amount < 0:
             expenses_per_category[transaction.category] += transaction.amount
 
-    colors = ["#3F3B6C", "#624F82", "#9F73AB", "#A3C7D6", "#A3C7D6", "#A3C7D6"]
+    colors = ["#321D70", "#25528F", "#5083C1", "#7CA6D7", "#A6C4E5", "#CCD9F5"]
 
     if len(transactions) == 0:
         values = [0, 0, 0, 0, 0, 0]
@@ -178,12 +178,12 @@ def index():
     fig_bar.add_trace(go.Bar(x=data_y,
                     y=data_pos,
                     name='Income',
-                    marker_color='rgb(0,128,0)'
+                    marker_color='#38485E'
                     ))
     fig_bar.add_trace(go.Bar(x=data_y,
                     y=data_neg,
                     name='Expenses',
-                    marker_color='rgb(255,160,122)'
+                    marker_color='#E36E39'
                     ))
 
     fig_bar.update_layout(
@@ -193,6 +193,7 @@ def index():
             # titlefont_size=16,
             # tickfont_size=14,
         ),
+        margin=dict(r=0),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         showlegend=False,
