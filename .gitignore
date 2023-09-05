@@ -1,5 +1,6 @@
 .venv/
 newbanking/
+venv_banking/
 
 *.pyc
 __pycache__/
