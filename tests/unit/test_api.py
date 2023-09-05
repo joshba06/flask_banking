@@ -7,7 +7,7 @@ import json
 
 
 # Test data for creating a transaction
-BASE_URL = "/flask_banking/api"
+BASE_URL = "/banking/api"
 
 valid_transaction_data = {
     "description": "Grocery shopping",
@@ -60,7 +60,7 @@ def test_read_all(client, sample_transactions):
     assert str(Transaction.query.get(data_json[0]["id"]).amount) == data_json[0]["amount"]
     assert Transaction.query.get(data_json[0]["id"]).category == data_json[0]["category"]
     assert Transaction.query.get(data_json[0]["id"]).date_booked.isoformat() == data_json[0]["date_booked"]
-    
+
 # Test case for creating a transaction with valid data
 def test_create_valid_transaction(client):
     response = client.post(f"{BASE_URL}/transactions", json=valid_transaction_data)
