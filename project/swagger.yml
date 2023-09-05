@@ -4,7 +4,7 @@ info:
   description: "An API to manage transaction in the banking app"
   version: "1.0.0"
 servers:
-  - url: "/flask_banking/api" # allows connections to http://localhost:8000/flask_banking/api.
+  - url: "/banking/api" # allows connections to http://localhost:8000/banking/api.
 components:
   schemas:
     Transactions:

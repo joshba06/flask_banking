@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from sqlalchemy import desc, case, func
+from sqlalchemy import desc, func
 import decimal
 
 from sqlalchemy import Column, Integer, String, DateTime, Numeric

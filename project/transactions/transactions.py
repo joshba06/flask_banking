@@ -46,7 +46,7 @@ class FilterForm(FlaskForm):
 
 
 ## App routes
-@transactions_bp.route("/", methods=["GET", "POST"])
+@transactions_bp.route("/", methods=["GET"])
 def index():
 
     # Transactions filter
@@ -203,7 +203,7 @@ def index():
 
     graphJSON_bar = json.dumps(fig_bar, cls=plotly.utils.PlotlyJSONEncoder)
 
-    return render_template('transactions/base.html',
+    return render_template('transactions/index.html',
                             unique_descriptions=unique_descriptions,
                             transactions=transactions,
                             template_form=transaction_form,

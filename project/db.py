@@ -6,7 +6,6 @@ from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 from datetime import datetime
 from pprint import pprint
 
-# testing: 'sqlite://'
 # Normal: sqlite:///project.db
 engine = create_engine('sqlite:///project.db')
 
@@ -71,5 +70,4 @@ def create_database(Transaction):
         transaction.calculate_saldo()
 
     db_session.commit()
-    pprint(Transaction.query.all())
     print("Completed seeding database")
