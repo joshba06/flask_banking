@@ -1,33 +1,31 @@
 import os
 import connexion
-from dotenv import load_dotenv
+from pprint import pprint
 
-
+app = None
 
 def create_app(test_setup=False):
-    # create and configure the app
+    print("[__init__.py] Creating app")
+
     from swagger_ui_bundle import swagger_ui_3_path
     options = {'swagger_path': swagger_ui_3_path}
+
+    global app
     app = connexion.App(__name__, specification_dir="./", options=options)
+    app.app.config.from_object('config.Config')
+
     app.add_api("swagger.yml")
     app = app.app
 
-    # Load secret vars from env file
-    load_dotenv()
-
-    app.config.from_mapping(
-        SECRET_KEY=os.getenv("SECRET_KEY"),
-        DATABASE=os.getenv("DATABASE_URL"),
-    )
-
     from project.db import init_db
     if test_setup is False:
-        print("Starting normal setup")
-        init_db()
-        print("Initialisation complete")
+        print("__________[APP] NORMAL SETUP__________")
     else:
-        print("Starting test setup")
-        init_db(test_setup=True)
+        print("__________[APP] TEST SETUP__________")
+        app.config.update({
+            "TESTING": True,
+        })
+    init_db()
 
     from project.transactions.transactions import transactions_bp
     app.register_blueprint(transactions_bp, url_prefix='/banking')

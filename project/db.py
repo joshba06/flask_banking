@@ -6,27 +6,33 @@ from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 from datetime import datetime
 from pprint import pprint
 
-# Normal: sqlite:///project.db
-engine = create_engine('sqlite:///project.db')
+from project import app
 
+engine = create_engine(app.app.config["DATABASE_URL"])
 db_session = scoped_session(sessionmaker(autocommit=False,
-                                         autoflush=False,
-                                         bind=engine))
+                                        autoflush=False,
+                                        bind=engine))
 Base = declarative_base()
 Base.query = db_session.query_property()
 
-def init_db(test_setup=False):
+def init_db():
     from project.models import Transaction
     Base.metadata.create_all(bind=engine)
+    print(f"Continuing db setup with db session at: {db_session.get_bind()}")
+    print(f"Table names: {Base.metadata.tables.keys()}")
 
-    if test_setup is False:
-        print("Initialising database for normal setup")
+    if app.app.config["TESTING"] is False:
+        print("__________[DB] NORMAL SETUP__________")
+        print("Existing transactions:")
+        pprint(Transaction.query.all())
+
         if len(Transaction.query.all()) == 0:
             print("Seeding database")
             create_database(Transaction)
+            print("Seeding complete")
     else:
+        print("__________[DB] TEST SETUP__________")
         print("Initialising database for test setup")
-
 
 
 def create_database(Transaction):
@@ -70,4 +76,3 @@ def create_database(Transaction):
         transaction.calculate_saldo()
 
     db_session.commit()
-    print("Completed seeding database")

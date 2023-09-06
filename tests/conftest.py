@@ -9,9 +9,7 @@ from project.db import db_session
 @pytest.fixture()
 def app():
     app = create_app(test_setup=True)
-    app.config.update({
-        "TESTING": True,
-    })
+
     print("Test environment before setup: {}".format(Transaction.query.all()))
 
     Transaction.query.delete()
