@@ -167,9 +167,9 @@ def index():
             )
         )
     if len(transactions) == 0:
-        fig_donut.update_layout(annotations=[dict(text='No results', x=0.5, y=0.5, font_size=20, showarrow=False)])
+        fig_donut.update_layout(annotations=[dict(text='No results', x=0.5, y=0.5, font_size=16, showarrow=False)])
     else:
-        fig_donut.update_layout(annotations=[dict(text='Expenses', x=0.5, y=0.5, font_size=20, showarrow=False)])
+        fig_donut.update_layout(annotations=[dict(text='Expenses', x=0.5, y=0.5, font_size=16, showarrow=False)])
 
     graphJSON_donut = json.dumps(fig_donut, cls=plotly.utils.PlotlyJSONEncoder)
 
