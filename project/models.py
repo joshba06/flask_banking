@@ -1,6 +1,7 @@
 from datetime import datetime, date
 from sqlalchemy import desc, func
 import decimal
+from pprint import pprint
 
 from sqlalchemy import Column, Integer, String, DateTime, Numeric
 from project.db import Base, db_session
@@ -78,14 +79,15 @@ class Transaction(Base):
         if category not in [None, "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
             raise ValueError("Invalid category value.")
 
-        # print("Filtering start: {}, end: {}, search type: {}, description: {},".format(start_date, end_date, search_type, transaction_description))
+        print(f"Filtering start: {start_date}, end: {end_date}, search type: {search_type}, description: {transaction_description}, category: {category}")
 
         # Query database for description
         if transaction_description != None and transaction_description != "":
             if search_type == "Matches":
                 transactions = Transaction.query.filter(Transaction.description == transaction_description).all()
             else:
-                transactions = Transaction.query.filter(Transaction.description.like("%{}%".format(transaction_description))).all()
+                transactions = Transaction.query.filter(Transaction.description.ilike("%{}%".format(transaction_description))).all()
+                pprint(transactions)
         else:
             transactions = Transaction.query.order_by(desc(Transaction.date_booked)).all()
 

@@ -86,7 +86,6 @@ def index():
     unique_descriptions = list(set(descriptions))
 
     ## Display graphs
-
     # Prepare data for charts
     data_y = []
     data_pos = []

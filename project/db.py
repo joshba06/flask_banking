@@ -23,8 +23,7 @@ def init_db():
 
     if app.app.config["TESTING"] is False:
         print("__________[DB] NORMAL SETUP__________")
-        print("Existing transactions:")
-        pprint(Transaction.query.all())
+        print(f"Existing transactions: {Transaction.query.count()}")
 
         if len(Transaction.query.all()) == 0:
             print("Seeding database")
