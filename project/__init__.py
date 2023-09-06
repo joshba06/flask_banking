@@ -10,11 +10,12 @@ def create_app(test_setup=False):
     options = {'swagger_path': swagger_ui_3_path}
     app = connexion.App(__name__, specification_dir="./", options=options)
     app.add_api("swagger.yml")
+    app = app.app
 
     # Load secret vars from env file
     load_dotenv()
 
-    app.app.config.from_mapping(
+    app.config.from_mapping(
         SECRET_KEY=os.getenv("SECRET_KEY"),
         DATABASE=os.getenv("DATABASE_URL"),
     )
@@ -29,9 +30,9 @@ def create_app(test_setup=False):
         init_db(test_setup=True)
 
     from project.transactions.transactions import transactions_bp
-    app.app.register_blueprint(transactions_bp, url_prefix='/banking')
+    app.register_blueprint(transactions_bp, url_prefix='/banking')
 
     from project.main.main import main_bp
-    app.app.register_blueprint(main_bp, url_prefix='/')
+    app.register_blueprint(main_bp, url_prefix='/')
 
-    return app.app
+    return app
