@@ -3,14 +3,15 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from pprint import pprint
 
-## Model initialisation tests
+
+## Model initialisation tests (no db commit so account association isnt tested here)
 def test_starts_with_empty_database(model_initialiser):
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
     assert Transaction.query.count() == 0
 
 def test_default_date_booked(model_initialiser):
     # Test that if no date_booked is provided, it defaults to the current datetime
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     transaction = Transaction("Test Transaction", 100.00, "Salary")
     assert isinstance(transaction.date_booked, datetime)
@@ -18,27 +19,27 @@ def test_default_date_booked(model_initialiser):
 
 def test_long_description(model_initialiser):
     # Test that a ValueError is raised when the description is too long
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(ValueError, match="The 'description' variable must be a string with less than 80 characters."):
         Transaction("A" * 81, 100.00, "Salary")
 
 def test_invalid_amount_type(model_initialiser):
     # Test that a ValueError is raised when the amount is not a valid type
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(ValueError, match="The 'amount' variable must be a decimal, integer or float."):
         Transaction("Test Transaction", "invalid", "Salary")
 
 def test_invalid_date_booked_type(model_initialiser):
     # Test that a ValueError is raised when date_booked is not of type datetime
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(ValueError, match="date_booked is not of type datetime"):
         Transaction("Test Transaction", 100.00, "Salary", date_booked="invalid_date")
 
 def test_valid_transaction(model_initialiser):
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     description = "Valid Transaction"
     amount = 100.50
@@ -53,41 +54,90 @@ def test_valid_transaction(model_initialiser):
 
 def test_read_all_invalid_category(model_initialiser):
     # Test invalid category
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(ValueError, match="Invalid category value."):
         Transaction.read_all(category="InvalidCategory")
 
 
 
-## Database tests
+## Database tests (inkl. association of models Account and Transaction)
+def test_transaction_association(db_initialiser):
+    Account, Transaction, db_session = db_initialiser
+
+    account = Account(title="John's Savings", iban="DE1234567890123456")
+    db_session.add(account)
+    db_session.commit()
+
+    transaction = Transaction(description="Salary", amount=1000.0, category="Salary")
+    transaction.account = account
+    db_session.add(transaction)
+    db_session.commit()
+
+    retrieved_transaction = db_session.query(Transaction).first()
+    assert retrieved_transaction.description == "Salary"
+    assert retrieved_transaction.account == account
+
+def test_backref_association(db_initialiser):
+    Account, Transaction, db_session = db_initialiser
+
+    account = Account(title="John's Savings", iban="DE1234567890123456")
+    db_session.add(account)
+    db_session.commit()
+
+    transaction = Transaction(description="Rent", amount=-500.0, category="Rent")
+    transaction.account = account
+    db_session.add(transaction)
+    db_session.commit()
+
+    retrieved_account = db_session.query(Account).first()
+    assert len(retrieved_account.transactions) == 1
+    assert retrieved_account.transactions[0].description == "Rent"
+
+def test_multiple_transactions(db_initialiser):
+    Account, Transaction, db_session = db_initialiser
+
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
+    db_session.add(account)
+    transaction1 = Transaction(description="Utilities", amount=-150.0, category="Utilities")
+    transaction2 = Transaction(description="Groceries", amount=-80.0, category="Groceries")
+    account.transactions = [transaction1, transaction2]
+    db_session.add_all([transaction1, transaction2])
+    db_session.commit()
+
+    retrieved_account = db_session.query(Account).filter_by(title="Jane's Savings").first()
+    assert len(retrieved_account.transactions) == 2
 
 def test_number_of_rows_added(db_initialiser):
     # Create instances of the Transaction class and add them to the database
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
 
     transactions = [
         Transaction("Transaction 1", 100.00, "Salary"),
         Transaction("Transaction 2", 200.00, "Salary"),
         Transaction("Transaction 3", 300.00, "Salary"),
     ]
-    db_session.add_all(transactions)
+    account.transactions = transactions
+    db_session.add(account)
     db_session.commit()
 
-    # db_session.expire_all()
-    num_rows = db_session.query(Transaction).count()
+
+    num_rows = len(db_session.query(Account).filter_by(iban="DE6543210987654321").first().transactions)
     assert num_rows == len(transactions)
 
 def test_saldo_calculation_with_empty_database(db_initialiser):
     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
 
     transactions = [
         Transaction("Transaction 1", 100.00, "Salary"),
         Transaction("Transaction 2", 200.00, "Salary"),
         Transaction("Transaction 3", 300.00, "Salary"),
     ]
-    db_session.add_all(transactions)
+    account.transactions = transactions
+    db_session.add(account)
     db_session.commit()
 
     db_session.expire_all()
@@ -101,14 +151,16 @@ def test_saldo_calculation_with_empty_database(db_initialiser):
 
 def test_saldo_calculation_with_empty_unordered_dates(db_initialiser):
     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
 
     transactions = [
         Transaction("Transaction 1", 50.00, "Salary", date_booked=datetime(2023,8,15,15,0,0)), # First added, last in time
         Transaction("Transaction 2", -100.00, "Rent", date_booked=datetime(2023,8,15,12,0,0)),
         Transaction("Transaction 3", 300.00, "Salary", date_booked=datetime(2023,8,15,10,0,0)) # Last added, first in time
     ]
-    db_session.add_all(transactions)
+    account.transactions = transactions
+    db_session.add(account)
     db_session.commit()
     db_session.expire_all()
 
@@ -157,9 +209,12 @@ def generate_transactions():
     return transactions
 
 def test_read_all_return_list(generate_transactions, db_initialiser):
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
+
     transactions_to_add = [Transaction(**transaction) for transaction in generate_transactions]
-    db_session.add_all(transactions_to_add)
+    account.transactions = transactions_to_add
+    db_session.add(account)
     db_session.commit()
 
     for transaction in transactions_to_add:
@@ -169,9 +224,12 @@ def test_read_all_return_list(generate_transactions, db_initialiser):
     assert type(Transaction.read_all()) is list
 
 def test_read_all_no_filters(generate_transactions, db_initialiser):
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
+
     transactions_to_add = [Transaction(**transaction) for transaction in generate_transactions]
-    db_session.add_all(transactions_to_add)
+    account.transactions = transactions_to_add
+    db_session.add(account)
     db_session.commit()
 
     for transaction in transactions_to_add:
@@ -193,9 +251,12 @@ def test_read_all_no_filters(generate_transactions, db_initialiser):
 
 def test_read_all_exact_description_match(generate_transactions, db_initialiser):
     # Create test transactions with specific descriptions
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
+
     transactions_to_add = [Transaction(**transaction) for transaction in generate_transactions]
-    db_session.add_all(transactions_to_add)
+    account.transactions = transactions_to_add
+    db_session.add(account)
     db_session.commit()
 
     transactions = Transaction.read_all(transaction_description="Spotify lifetime membership", search_type="Matches")
@@ -205,10 +266,12 @@ def test_read_all_exact_description_match(generate_transactions, db_initialiser)
 
 def test_read_all_partial_description_match(generate_transactions, db_initialiser):
     # Create test transactions with specific descriptions
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
 
     transactions_to_add = [Transaction(**transaction) for transaction in generate_transactions]
-    db_session.add_all(transactions_to_add)
+    account.transactions = transactions_to_add
+    db_session.add(account)
     db_session.commit()
 
     # Case sensitive
@@ -221,13 +284,15 @@ def test_read_all_partial_description_match(generate_transactions, db_initialise
 
 def test_read_all_date_range(db_initialiser):
     # Create test transactions with specific dates
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
 
     today = datetime.now()
     t1 = Transaction(description="Transaction 1", amount=100.00, category="Salary", date_booked=today)
     t2 = Transaction(description="Transaction 2", amount=200.00, category="Salary", date_booked=today - timedelta(days=5))
     t3 = Transaction(description="Transaction 3", amount=50.00, category="Salary", date_booked=today - timedelta(days=10))
-    db_session.add_all([t1, t2, t3])
+    account.transactions = [t1, t2, t3]
+    db_session.add(account)
     db_session.commit()
 
     start_date = today - timedelta(days=7)
@@ -239,10 +304,12 @@ def test_read_all_date_range(db_initialiser):
     assert transactions[0].description == "Transaction 2"
 
 def test_read_all_category(generate_transactions, db_initialiser):
-    Transaction, db_session = db_initialiser
+    Account, Transaction, db_session = db_initialiser
+    account = Account(title="Jane's Savings", iban="DE6543210987654321")
 
     transactions_to_add = [Transaction(**transaction) for transaction in generate_transactions]
-    db_session.add_all(transactions_to_add)
+    account.transactions = transactions_to_add
+    db_session.add(account)
     db_session.commit()
 
     transactions = Transaction.read_all(category="Groceries")
@@ -251,27 +318,27 @@ def test_read_all_category(generate_transactions, db_initialiser):
 
 def test_read_all_invalid_start_date(model_initialiser):
     # Test case: Invalid start_date (not a datetime object)
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(ValueError, match="start_date must be a date object."):
         Transaction.read_all(start_date="2023-01-01")
 
 def test_read_all_invalid_end_date(model_initialiser):
     # Test case: Invalid end_date (not a datetime object)
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
     with pytest.raises(ValueError, match="end_date must be a date object."):
         Transaction.read_all(end_date="2023-12-31")
 
 def test_read_all_invalid_search_type(model_initialiser):
     # Test case: Invalid search_type (not "Includes" or "Matches")
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(ValueError, match="search_type must be either 'Includes' or 'Matches'."):
         Transaction.read_all(search_type="InvalidSearch")
 
 def test_group_by_month_valid_input(model_initialiser):
     # Test case: Valid input
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
     transactions = [
         Transaction(description="Income 1", amount=100.00, category="Salary", date_booked=datetime(2023, 1, 15)),
         Transaction(description="Expense 1", amount=-50.00, category="Rent", date_booked=datetime(2023, 1, 20)),
@@ -281,20 +348,20 @@ def test_group_by_month_valid_input(model_initialiser):
 
 def test_group_by_month_invalid_input_not_list(model_initialiser):
     # Test case: Invalid input (not a list)
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(TypeError, match="Input transactions must be a list."):
         Transaction.group_by_month("invalid_input")
 
 def test_group_by_month_invalid_input_not_transaction_objects(model_initialiser):
     # Test case: Invalid input (not a list of Transaction objects)
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     with pytest.raises(TypeError, match="Input transactions must be a list of Transaction objects."):
         Transaction.group_by_month([1, 2, 3])
 
 def test_group_by_month_data_calculation(model_initialiser):
-    Transaction = model_initialiser
+    _, Transaction = model_initialiser
 
     transactions = [
         Transaction(description="Income 1", amount=100.00, category="Rent", date_booked=datetime(2023, 1, 15)),

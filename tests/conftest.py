@@ -25,8 +25,8 @@ def client_initialiser(app_initialiser):
 @pytest.fixture()
 def model_initialiser(app_initialiser):
     print("Running model initialiser")
-    _, Transaction, _ = app_initialiser
-    return Transaction
+    _, Account, Transaction, _ = app_initialiser
+    return Account, Transaction
 
 @pytest.fixture()
 def db_initialiser(app_initialiser):
