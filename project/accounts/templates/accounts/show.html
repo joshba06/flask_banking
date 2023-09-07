@@ -1,6 +1,205 @@
 {% extends 'main/base.html' %}
 
 {% block title %}Banking{% endblock %}
+
 {% block content %}
-Showing id {{id}}
+
+<div class="accounts-heading">
+  <h1>Your Accounts</h1>
+  <a href="#" class="btn btn-outline-primary">New Account +</a>
+</div>
+<div class="accounts-selector">
+  {% for account in accounts %}
+    <a class="card-account-link-area" id="{{ 'active-account' if account.id == active_account_id }}" href="{{ url_for('accounts.show', account_id=account.id) }}">
+      <div class="card-account">
+        <div class="top">
+          Logo | {{account.iban}}
+        </div>
+        <div class="middle">
+          {{account.title}}
+        </div>
+        <div class="bottom">
+          {{ account_saldos[account.id] }} €
+        </div>
+      </div>
+    </a>
+  {% endfor%}
+</div>
+<div class="activities-heading">
+  <h1>Recent Activities</h1>
+</div>
+<div class="activities-menu">
+
+  <div class="activities-filter">
+    <form action="{{ url_for('accounts.show', account_id=active_account_id) }}" method="post" class="form-inline" id="filter-transaction">
+      {{ filter_form.hidden_tag() }}
+
+      <div class="input-group input-group-sm mr-2">
+        {{ filter_form.start_date(class_="form-control",  aria_describedby="inputGroup-sizing-sm") }}
+        <div class="input-group-prepend">
+          <div class="input-group-text" id="inputGroup-sizing-sm">To</div>
+        </div>
+        {{ filter_form.end_date(class_="form-control", aria_describedby="inputGroup-sizing-sm") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        <div class="input-group-prepend">
+          {{ filter_form.search_type(class_="btn btn-outline-secondary dropdown-toggle") }}
+        </div>
+        {{ filter_form.transaction_description(id="autocomplete", class_="form-control") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        {{ filter_form.category(class_="form-control") }}
+      </div>
+
+      {{ filter_form.submit(class_="btn btn-sm btn-primary mr-2") }}
+      {{ filter_form.clear(class_="btn btn-sm btn-outline-secondary") }}
+    </form>
+
+  </div>
+
+  <div class="activities-menu-separator"></div>
+  <div class="activities-actions">
+    <div class="btn-group" role="group"">
+      <button type="button" id="show-new-transaction-field" class="btn btn-sm btn-primary" style="margin-right:2px;">Transfer</button>
+      <button type="button" class="btn btn-sm btn-primary">Export</button>
+    </div>
+  </div>
+</div>
+
+<div id="new-transaction-div" style="display:none;">
+  <div class="standard-payment">
+    <div class="section-title">STANDARD PAYMENT</div>
+    <form action="{{ url_for('accounts.create', account_id=active_account_id) }}" method="post" class="form-inline needs-validation" novalidate>
+      {{ transaction_form.hidden_tag() }}
+
+      <div class="input-group input-group-sm mr-2">
+        {{ transaction_form.description(class_="form-control",  aria_describedby="inputGroup-sizing-sm") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        {{ transaction_form.category(class_="custom-select" ,id="new-transaction-category") }}
+      </div>
+
+
+      <div class="input-group input-group-sm mr-2">
+        {{ transaction_form.amount(class_="form-control", style="width:100px") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        {{ transaction_form.submit(class_="btn btn-sm btn-success") }}
+      </div>
+    </form>
+  </div>
+  <div class="subaccount-transfer">
+    <div class="section-title">SUBACCOUNT TRANSFER</div>
+    <form action="#" method="post" class="form-inline needs-validation" novalidate>
+      {{ subaccount_transfer_form.hidden_tag() }}
+
+      <div class="input-group input-group-sm mr-2">
+        {{ subaccount_transfer_form.description(class_="form-control",  aria_describedby="inputGroup-sizing-sm") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        {{ subaccount_transfer_form.recipient(class_="custom-select", id="new-transaction-recipient") }}
+      </div>
+
+
+      <div class="input-group input-group-sm mr-2">
+        {{ subaccount_transfer_form.amount(class_="form-control", style="width:100px") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        {{ subaccount_transfer_form.submit(class_="btn btn-sm btn-success") }}
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="activities-content">
+  <div class="activities-table">
+    <table class="table">
+      <thead class="thead-light">
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Description</th>
+          <th scope="col">Category</th>
+          <th scope="col" class="text-center">Amount</th>
+          <th scope="col" class="text-center">Saldo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for transaction in transactions %}
+          <tr>
+            <td>{{ transaction.date_booked.strftime("%d/%m/%y") }}</td>
+            <td>{{ transaction.description }}</td>
+            <td>{{ transaction.category }}</td>
+            <td class="text-right">{{ transaction.amount }} €</td>
+            <td class="text-right">{{ transaction.saldo }} €</td>
+          </tr>
+        {% endfor%}
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td class="text-right" style="font-weight: bold">Sum: {{transactions_table_sum}}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+  <div class="activities-analytics">
+    Analytics
+  </div>
+</div>
+
+
+<!-- JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+<!-- Autocomplete -->
+<!-- pass transactions variable to js -->
+<script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+<script> var unique_descriptions = JSON.parse('{{ autocomplete_descriptions|tojson|safe }}');</script>
+
+<!-- Dynamic buttons / add transaction form -->
+<script src="{{ url_for('static', filename='js/button_actions.js') }}"></script>
+
+
+<script>
+  // Example starter JavaScript for disabling form submissions if there are invalid fields
+  (function() {
+    'use strict';
+    window.addEventListener('load', function() {
+      // Fetch all the forms we want to apply custom Bootstrap validation styles to
+      var forms = document.getElementsByClassName('needs-validation');
+      // Loop over them and prevent submission
+      var validation = Array.prototype.filter.call(forms, function(form) {
+        form.addEventListener('submit', function(event) {
+
+          if (document.getElementById("new-transaction-category").value === "Category") {
+            document.getElementById("new-transaction-category").setCustomValidity("Invalid field.")
+            event.preventDefault();
+            event.stopPropagation();
+            form.classList.add('was-validated');
+          }
+          // if (document.getElementById("new-transaction-recipient").value === "Recipient") {
+          //   document.getElementById("new-transaction-recipient").setCustomValidity("Invalid field.")
+          //   event.preventDefault();
+          //   event.stopPropagation();
+          //   form.classList.add('was-validated');
+          // }
+        }, false);
+      });
+    }, false);
+  })();
+  </script>
+
+
+
 {% endblock %}

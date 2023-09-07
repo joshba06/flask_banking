@@ -26,7 +26,7 @@ def init_db():
         print("__________[DB] NORMAL SETUP__________")
         print(f"Existing accounts: {Account.query.count()}, existing transactions: {Transaction.query.count()}")
 
-        if Account.query.count() == 0 or Transaction.query.count() == 0:
+        if Account.query.count() < 3 or Transaction.query.count() == 0:
             Transaction.query.delete()
             Account.query.delete()
             print("Seeding database")
@@ -37,7 +37,9 @@ def init_db():
 
 
 def create_database(Account, Transaction):
-    account = Account(title="Main account", iban="DE123456")
+    account1 = Account(title="Main account", iban="DE123456")
+    account2 = Account(title="Savings", iban="DE9876")
+    account3 = Account(title="Shared", iban="EN1231")
 
     transactions = [
 
@@ -70,8 +72,8 @@ def create_database(Account, Transaction):
         Transaction(description="EDEKA sagt danke", amount=-390.00, category="Groceries", date_booked=datetime(2023, 4, 28)),
     ]
     for transaction in transactions:
-        account.transactions.append(transaction)
-    db_session.add(account)
+        account1.transactions.append(transaction)
+    db_session.add_all([account1, account2, account3])
     db_session.commit()
 
     transactions = db_session.query(Transaction).all()

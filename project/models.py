@@ -12,7 +12,7 @@ class Account(Base):
     id = Column(Integer, primary_key = True)
     title = Column(String(100), index = True)
     iban = Column(String(100), index = True, unique = True)
-    transactions = relationship('Transaction', backref='account')
+    transactions = relationship('Transaction', backref='account', lazy="dynamic")
 
     def __init__(self, title, iban):
         if not isinstance(title, str):
@@ -84,31 +84,33 @@ class Transaction(Base):
         db_session.commit()
 
     @classmethod
-    def read_all(cls, start_date = None, end_date = None, category = None, search_type = None, transaction_description = None):
+    def read_all(cls, account_id, start_date = None, end_date = None, category = None, search_type = None, transaction_description = None):
 
         # Check input parameters
+        if account_id is None:
+            raise ValueError("account_id must be provided.")
+        if account_id is not None and not isinstance(account_id, int):
+            raise ValueError("account_id must be of type int.")
         if start_date is not None and not isinstance(start_date, date):
             raise ValueError("start_date must be a date object.")
         if end_date is not None and not isinstance(end_date, date):
             raise ValueError("end_date must be a date object.")
-        # Check search_type
         if search_type not in [None, "Includes", "Matches"]:
             raise ValueError("search_type must be either 'Includes' or 'Matches'.")
-
-        # Check category
         if category not in [None, "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
             raise ValueError("Invalid category value.")
 
-        # print(f"Filtering start: {start_date}, end: {end_date}, search type: {search_type}, description: {transaction_description}, category: {category}")
+        print(f"[Filter] account_id: {account_id}, start: {start_date}, end: {end_date}, search type: {search_type}, description: {transaction_description}, category: {category}")
 
-        # Query database for description
+        # Query database for description & account id
         if transaction_description != None and transaction_description != "":
             if search_type == "Matches":
-                transactions = Transaction.query.filter(Transaction.description == transaction_description).all()
+                transactions = Transaction.query.filter(Transaction.description == transaction_description, Transaction.account_id==account_id).all()
+                # transactions = Transaction.query.filter(Transaction.description == transaction_description).all()
             else:
-                transactions = Transaction.query.filter(Transaction.description.ilike("%{}%".format(transaction_description))).all()
+                transactions = Transaction.query.filter(Transaction.account_id==account_id, Transaction.description.ilike("%{}%".format(transaction_description))).all()
         else:
-            transactions = Transaction.query.order_by(desc(Transaction.date_booked)).all()
+            transactions = Transaction.query.filter(Transaction.account_id==account_id).order_by(desc(Transaction.date_booked)).all()
 
         # Filter results for dates
         if start_date != None and end_date != None:
