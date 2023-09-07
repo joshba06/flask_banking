@@ -5,7 +5,7 @@ import json
 
 
 # Test data for creating a transaction
-BASE_URL = "/banking/api"
+BASE_URL = "/api"
 
 valid_transaction_data = {
     "description": "Grocery shopping",
