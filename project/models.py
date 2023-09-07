@@ -6,16 +6,22 @@ from pprint import pprint
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from project.db import Base, db_session
-# print(f"[models.py] Connecting Transaction model to {db_session.get_bind()}")
-
 
 class Account(Base):
     __tablename__ = "accounts"
     id = Column(Integer, primary_key = True)
     title = Column(String(100), index = True)
     iban = Column(String(100), index = True, unique = True)
-    saldo = Column(Numeric(precision=10, scale=2), nullable=True, index = False, unique = False)
     transactions = relationship('Transaction', backref='account')
+
+    def __init__(self, title, iban):
+        if not isinstance(title, str):
+            raise ValueError(f"'title' should be of type 'str'.")
+        if not isinstance(iban, str):
+            raise ValueError(f"'iban' should be of type 'str'.")
+
+        self.title = title
+        self.iban = iban
 
     def __repr__(self):
         return f"Account with iban: {self.iban}"
