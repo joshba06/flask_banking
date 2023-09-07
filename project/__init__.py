@@ -27,7 +27,7 @@ def create_app(test_setup=False):
     init_db()
 
     from project.transactions.transactions import transactions_bp
-    app.register_blueprint(transactions_bp, url_prefix='/banking')
+    app.register_blueprint(transactions_bp, url_prefix='/')
 
     from project.main.main import main_bp
     app.register_blueprint(main_bp, url_prefix='/')

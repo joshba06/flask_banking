@@ -4,7 +4,7 @@ info:
   description: "An API to manage transaction in the banking app"
   version: "1.0.0"
 servers:
-  - url: "/banking/api" # allows connections to http://localhost:8000/banking/api.
+  - url: "/api" # allows connections to http://localhost:8000/api.
 components:
   schemas:
     Transactions:

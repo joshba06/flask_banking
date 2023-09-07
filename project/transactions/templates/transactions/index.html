@@ -16,7 +16,7 @@
     </div>
 
     <div id="new-transaction" style="display:none;">
-      <form action="/banking" method="post" >
+      <form action="/" method="post" >
         {{ template_form.hidden_tag() }}
         {{ template_form.description() }}
         {{ template_form.category() }}
@@ -30,7 +30,7 @@
     </div>
 
     <div class="transactions-filter">
-      <form action="/banking" method="post" id="filter-transaction">
+      <form action="/" method="post" id="filter-transaction">
         {{ filter_form.hidden_tag() }}
         {{ filter_form.start_date() }}
         To

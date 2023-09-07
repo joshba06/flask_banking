@@ -7,6 +7,6 @@ main_bp = Blueprint('main', __name__,
                static_folder='../static',
                static_url_path='assets')
 
-@main_bp.route("/", methods=['GET'])
-def home():
-    return render_template('main/home.html')
+# @main_bp.route("/", methods=['GET'])
+# def home():
+#     return render_template('main/home.html')
