@@ -3,9 +3,22 @@ from sqlalchemy import desc, func
 import decimal
 from pprint import pprint
 
-from sqlalchemy import Column, Integer, String, DateTime, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey
+from sqlalchemy.orm import relationship
 from project.db import Base, db_session
 # print(f"[models.py] Connecting Transaction model to {db_session.get_bind()}")
+
+
+class Account(Base):
+    __tablename__ = "accounts"
+    id = Column(Integer, primary_key = True)
+    title = Column(String(100), index = True)
+    iban = Column(String(100), index = True, unique = True)
+    saldo = Column(Numeric(precision=10, scale=2), nullable=True, index = False, unique = False)
+    transactions = relationship('Transaction', backref='account')
+
+    def __repr__(self):
+        return f"Account with iban: {self.iban}"
 
 class Transaction(Base):
 
@@ -16,6 +29,7 @@ class Transaction(Base):
     saldo = Column(Numeric(precision=10, scale=2), nullable=True, index = False, unique = False)
     category = Column(String(20), nullable=False)
     date_booked = Column(DateTime, nullable=False)
+    account_id = Column(Integer, ForeignKey('accounts.id'), nullable=False)
 
     def __init__(self, description, amount, category, date_booked=None):
         if not isinstance(description, str) or len(description) > 80:

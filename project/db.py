@@ -17,24 +17,25 @@ Base = declarative_base()
 Base.query = db_session.query_property()
 
 def init_db():
-    from project.models import Transaction
+    from project.models import Account, Transaction
     Base.metadata.create_all(bind=engine)
     # print(f"Continuing db setup with db session at: {db_session.get_bind()}")
     # print(f"Table names: {Base.metadata.tables.keys()}")
 
     if app.app.config["TESTING"] is False:
         print("__________[DB] NORMAL SETUP__________")
-        print(f"Existing transactions: {Transaction.query.count()}")
+        print(f"Existing accounts: {Account.query.count()}")
 
-        if len(Transaction.query.all()) == 0:
+        if Account.query.count() == 0:
             print("Seeding database")
-            create_database(Transaction)
+            create_database(Account, Transaction)
             print("Seeding complete")
     else:
         print("__________[DB] TEST SETUP__________")
 
 
-def create_database(Transaction):
+def create_database(Account, Transaction):
+    account = Account(title="Main account", iban="DE123456")
 
     transactions = [
 
@@ -67,7 +68,8 @@ def create_database(Transaction):
         Transaction(description="EDEKA sagt danke", amount=-390.00, category="Groceries", date_booked=datetime(2023, 4, 28)),
     ]
     for transaction in transactions:
-        db_session.add(transaction)
+        account.transactions.append(transaction)
+    db_session.add(account)
     db_session.commit()
 
     transactions = db_session.query(Transaction).all()
