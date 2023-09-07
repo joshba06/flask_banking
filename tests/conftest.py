@@ -1,25 +1,37 @@
 import pytest
 from project import create_app
-from project.models import Transaction
 
-from project.db import db_session
-
-
-#-> Make “app” available everywhere in the tests
 @pytest.fixture()
-def app():
+def app_initialiser():
     app = create_app(test_setup=True)
 
-    print("Test environment before setup: {}".format(Transaction.query.all()))
-
+    from project.models import Transaction
+    from project.db import db_session
+    num_before_setup = Transaction.query.count()
     Transaction.query.delete()
     db_session.commit()
-    print("Test environment after setup: {}".format(Transaction.query.all()))
+    num_after_setup = Transaction.query.count()
+    print(f"Transactions in db before setup: {num_before_setup}, after setup: {num_after_setup}")
 
-    yield app
+    yield app, Transaction, db_session
 
 
-# Simulates requests to the app
 @pytest.fixture()
-def client(app):
+def client_initialiser(app_initialiser):
+    print("Running client initialiser")
+    app, _, _ = app_initialiser
     return app.test_client()
+
+@pytest.fixture()
+def model_initialiser(app_initialiser):
+    print("Running model initialiser")
+    _, Transaction, _ = app_initialiser
+    return Transaction
+
+@pytest.fixture()
+def db_initialiser(app_initialiser):
+    print("Running db initialiser")
+    _, Transaction, db_session = app_initialiser
+    Transaction.query.delete()
+    db_session.commit()
+    return Transaction, db_session

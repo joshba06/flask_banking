@@ -9,6 +9,7 @@ from pprint import pprint
 from project import app
 
 engine = create_engine(app.app.config["DATABASE_URL"])
+
 db_session = scoped_session(sessionmaker(autocommit=False,
                                         autoflush=False,
                                         bind=engine))
@@ -18,8 +19,8 @@ Base.query = db_session.query_property()
 def init_db():
     from project.models import Transaction
     Base.metadata.create_all(bind=engine)
-    print(f"Continuing db setup with db session at: {db_session.get_bind()}")
-    print(f"Table names: {Base.metadata.tables.keys()}")
+    # print(f"Continuing db setup with db session at: {db_session.get_bind()}")
+    # print(f"Table names: {Base.metadata.tables.keys()}")
 
     if app.app.config["TESTING"] is False:
         print("__________[DB] NORMAL SETUP__________")
@@ -31,7 +32,6 @@ def init_db():
             print("Seeding complete")
     else:
         print("__________[DB] TEST SETUP__________")
-        print("Initialising database for test setup")
 
 
 def create_database(Transaction):

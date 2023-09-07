@@ -1,7 +1,5 @@
 import pytest
-from project.db import db_session
 from datetime import datetime
-from project.models import Transaction
 from pprint import pprint
 import json
 
@@ -23,7 +21,9 @@ invalid_transaction_data = {
 
 # Fixture only needed for tests in this module
 @pytest.fixture
-def sample_transactions():
+def sample_transactions(app_initialiser):
+    app, Transaction, db_session = app_initialiser
+
     transactions = [
         Transaction("Transaction 1", 50.00, "Salary", date_booked=datetime(2023,8,15,15,0,0)),
         Transaction("Transaction 2", -100.00, "Rent", date_booked=datetime(2023,8,15,12,0,0)),
@@ -51,8 +51,10 @@ def clean_up_bytes_string(bytes_string):
     # Return the cleaned-up JSON data
     return json_data
 
-def test_read_all(client, sample_transactions):
-    response = client.get(f"{BASE_URL}/transactions")
+def test_read_all(model_initialiser, client_initialiser, sample_transactions):
+    Transaction = model_initialiser
+
+    response = client_initialiser.get(f"{BASE_URL}/transactions")
     assert response.status_code == 200
     data_json = clean_up_bytes_string(response.data)
     assert len(data_json) == 3
@@ -62,23 +64,23 @@ def test_read_all(client, sample_transactions):
     assert Transaction.query.get(data_json[0]["id"]).date_booked.isoformat() == data_json[0]["date_booked"]
 
 # Test case for creating a transaction with valid data
-def test_create_valid_transaction(client):
-    response = client.post(f"{BASE_URL}/transactions", json=valid_transaction_data)
+def test_create_valid_transaction(client_initialiser):
+    response = client_initialiser.post(f"{BASE_URL}/transactions", json=valid_transaction_data)
     assert response.status_code == 201
 
 # Test case for creating a transaction with invalid data
-def test_create_invalid_transaction(client):
-    response = client.post(f"{BASE_URL}/transactions", json=invalid_transaction_data)
+def test_create_invalid_transaction(client_initialiser):
+    response = client_initialiser.post(f"{BASE_URL}/transactions", json=invalid_transaction_data)
     assert response.status_code == 400
 
 # Test case for retrieving a single transaction by ID (valid ID)
-def test_get_single_transaction(client, sample_transactions):
+def test_get_single_transaction(client_initialiser, sample_transactions):
     # Assuming there is a transaction with ID 1 in the database
-    response = client.get(f"{BASE_URL}/transactions/1")
+    response = client_initialiser.get(f"{BASE_URL}/transactions/1")
     assert response.status_code == 200
 
 # Test case for retrieving a single transaction by ID (non-existent ID)
-def test_get_nonexistent_transaction(client, sample_transactions):
+def test_get_nonexistent_transaction(client_initialiser):
     # Assuming there is no transaction with ID 999 in the database
-    response = client.get(f"{BASE_URL}/transactions/999")
+    response = client_initialiser.get(f"{BASE_URL}/transactions/999")
     assert response.status_code == 404

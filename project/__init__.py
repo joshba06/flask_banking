@@ -1,11 +1,10 @@
-import os
 import connexion
 from pprint import pprint
 
 app = None
 
 def create_app(test_setup=False):
-    print("[__init__.py] Creating app")
+    # print("[__init__.py] Creating app")
 
     from swagger_ui_bundle import swagger_ui_3_path
     options = {'swagger_path': swagger_ui_3_path}

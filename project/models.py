@@ -5,7 +5,7 @@ from pprint import pprint
 
 from sqlalchemy import Column, Integer, String, DateTime, Numeric
 from project.db import Base, db_session
-print(f"[models.py] Connecting Transaction model to {db_session.get_bind()}")
+# print(f"[models.py] Connecting Transaction model to {db_session.get_bind()}")
 
 class Transaction(Base):
 
@@ -79,7 +79,7 @@ class Transaction(Base):
         if category not in [None, "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
             raise ValueError("Invalid category value.")
 
-        print(f"Filtering start: {start_date}, end: {end_date}, search type: {search_type}, description: {transaction_description}, category: {category}")
+        # print(f"Filtering start: {start_date}, end: {end_date}, search type: {search_type}, description: {transaction_description}, category: {category}")
 
         # Query database for description
         if transaction_description != None and transaction_description != "":
@@ -87,7 +87,6 @@ class Transaction(Base):
                 transactions = Transaction.query.filter(Transaction.description == transaction_description).all()
             else:
                 transactions = Transaction.query.filter(Transaction.description.ilike("%{}%".format(transaction_description))).all()
-                pprint(transactions)
         else:
             transactions = Transaction.query.order_by(desc(Transaction.date_booked)).all()
 

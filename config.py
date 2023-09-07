@@ -15,6 +15,7 @@ class Config:
 
     ## DEVELOPMENT config
     else:
+
         DATABASE_URL="sqlite:///project.db"
         SECRET_KEY=os.getenv("SECRET_KEY_LOCAL")
         SQLALCHEMY_TRACK_MODIFICATIONS = False
