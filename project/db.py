@@ -24,9 +24,11 @@ def init_db():
 
     if app.app.config["TESTING"] is False:
         print("__________[DB] NORMAL SETUP__________")
-        print(f"Existing accounts: {Account.query.count()}")
+        print(f"Existing accounts: {Account.query.count()}, existing transactions: {Transaction.query.count()}")
 
-        if Account.query.count() == 0:
+        if Account.query.count() == 0 or Transaction.query.count() == 0:
+            Transaction.query.delete()
+            Account.query.delete()
             print("Seeding database")
             create_database(Account, Transaction)
             print("Seeding complete")
