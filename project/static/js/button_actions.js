@@ -6,18 +6,15 @@ document.addEventListener("DOMContentLoaded", function() {
   // Add click event listener to "Add Transaction" button
   showTransactionsFieldButton.addEventListener("click", function(event) {
       event.preventDefault();
-      // cancelAddingTransactionButton.style.display = "inline";
-      newTransactionDiv.style.display = "flex";
+      newTransactionDiv.style.display = "block";
       newTransactionDiv.classList.add("new-transaction-form")
   });
 
   // Add click event listener to "Cancel" button
-  // cancelAddingTransactionButton.addEventListener("click", function(event) {
-  //     event.preventDefault();
-  //     addTransactionButton.style.display = "block";
-  //     cancelAddingTransactionButton.style.display = "none";
-  //     newTransactionForm.style.display = "none";
-  // });
+  cancelAddingTransactionButton.addEventListener("click", function(event) {
+      event.preventDefault();
+      newTransactionDiv.style.display = "none";
+  });
 
 });
 

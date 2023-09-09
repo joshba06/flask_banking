@@ -68,6 +68,8 @@ body {
     margin-top: 15px;
     margin-left: 10px;
     width: 130px;
+    display: flex;
+    justify-content: flex-start;
 }
 .card-account .middle {
   margin-top: 35px;
@@ -157,16 +159,26 @@ body {
 .new-transaction-form {
   width: 90%;
   margin: 1.5rem auto;
-  padding: 1.5rem;
+  /* padding: 1.5rem; */
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-bottom: 1.5rem;
+  padding-top: 1rem;
   display: flex;
   justify-content: space-around;
   border-radius: 10px;
   background: white;
   box-shadow: 0 0 15px rgba(0,0,0,0.2);
 }
-#new-transaction-div{
+
+#new-transaction-div > .forms{
   display: flex;
   justify-content:center;
+}
+#new-transaction-div > .cancel-button {
+  margin: 0px auto;
+  display: flex;
+  justify-content:flex-end;
 }
 
 .standard-payment{

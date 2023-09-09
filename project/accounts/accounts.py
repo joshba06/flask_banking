@@ -1,6 +1,6 @@
 # Flask
 from flask import (
-    Blueprint, redirect, render_template, request, url_for, jsonify, abort
+    Blueprint, redirect, render_template, request, url_for, jsonify, abort, flash
 )
 
 # Basics
@@ -49,11 +49,11 @@ class FilterForm(FlaskForm):
     clear = SubmitField("Clear")
 
 
-@accounts_bp.route("/accounts", methods=["GET"])
-def index():
-    accounts = Account.query.all()
-    return render_template('accounts/show.html',
-                           accounts=accounts)
+# @accounts_bp.route("/accounts", methods=["GET"])
+# def index():
+#     accounts = Account.query.all()
+#     return render_template('accounts/show.html',
+#                            accounts=accounts)
 
 @accounts_bp.route("/accounts/<int:account_id>", methods=["GET", "POST"])
 def show(account_id):
@@ -119,6 +119,7 @@ def create(account_id):
             db_session.add(account)
             db_session.commit()
             new_transaction.calculate_saldo()
+            print(f"Added new transaction: {new_transaction}")
             return redirect(url_for("accounts.show", account_id=account_id))
         except:
             print("Something went wrong")
