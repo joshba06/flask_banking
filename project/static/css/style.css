@@ -6,7 +6,6 @@ body {
 .main-container {
   width: 85%;
   margin: 0px auto;
-  border: 1px solid black;
   min-height: 100vh;
   padding-bottom: 1rem;
 }
@@ -65,6 +64,7 @@ body {
 #active-account {
   background-color: #33438D;
   color: white;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
 }
 .card-account .top {
     margin-top: 15px;

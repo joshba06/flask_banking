@@ -1,7 +1,8 @@
 # Flask
 from flask import (
-    Blueprint, redirect, render_template, request, url_for, jsonify, abort, flash
+    Blueprint, redirect, render_template, request, url_for, jsonify, abort
 )
+
 
 # Basics
 from pprint import pprint

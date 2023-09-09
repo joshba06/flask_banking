@@ -10,10 +10,12 @@
       <!-- Javascript for autocomplete -->
       <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css" rel="stylesheet" type="text/css" />
 
+      {{ fontawesome_html() }}
     {% endblock %}
   </head>
   <body>
     <div class="main-container">
+      <span class="fas fa-regular fa-download"></span>
       {% block content %}
 
       {% endblock %}

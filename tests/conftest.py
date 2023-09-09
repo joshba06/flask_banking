@@ -8,9 +8,13 @@ def app_initialiser():
     from project.models import Account, Transaction
     from project.db import db_session
     num_before_setup = Transaction.query.count()
-    Transaction.query.delete()
-    db_session.commit()
-    num_after_setup = Transaction.query.count()
+    try:
+       Transaction.query.delete()
+       db_session.commit()
+       num_after_setup = Transaction.query.count()
+    except:
+        db_session.rollback()
+
     print(f"Transactions in db before setup: {num_before_setup}, after setup: {num_after_setup}")
 
     yield app, Account, Transaction, db_session

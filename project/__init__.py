@@ -26,6 +26,9 @@ def create_app(test_setup=False):
         })
     init_db()
 
+    from flask_fontawesome import FontAwesome
+    fa = FontAwesome(app)
+
     from project.accounts.accounts import accounts_bp
     app.register_blueprint(accounts_bp, url_prefix='/')
 
