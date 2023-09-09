@@ -91,6 +91,34 @@ def show(account_id):
     transaction_form = TransactionForm()
     subaccount_transfer_form = SubaccountTransferForm()
 
+    # Currency value formatting function to get format: 123.123,00
+    def format_currency(value):
+        # Determine if the value is negative
+        is_negative = value < 0
+
+        # Work with the absolute value to format the number
+        abs_value = abs(value)
+
+        # Convert the value to string and split at the decimal
+        int_part, dec_part = "{:.2f}".format(abs_value).split('.')
+
+        # Reverse the integer part to format in groups of 3
+        reversed_int = int_part[::-1]
+
+        # Group by threes and then join them with dots
+        parts = [reversed_int[i:i+3] for i in range(0, len(reversed_int), 3)]
+        formatted_int = '.'.join(parts)[::-1]  # Reverse again to get the original order
+
+        # Build the final formatted string
+        formatted_value = f"{formatted_int},{dec_part}"
+
+        # If original value was negative, prepend the negative sign
+        if is_negative:
+            formatted_value = "-" + formatted_value
+
+        return formatted_value
+
+
 
     return render_template('accounts/show.html',
                         active_account_id=account_id,
@@ -101,7 +129,8 @@ def show(account_id):
                         transactions_table_sum=transactions_table_sum,
                         account_saldos=account_saldos,
                         transaction_form=transaction_form,
-                        subaccount_transfer_form=subaccount_transfer_form
+                        subaccount_transfer_form=subaccount_transfer_form,
+                        format_currency=format_currency
                         )
 
 
@@ -144,7 +173,6 @@ def subaccount_transfer(sender_account_id):
             db_session.commit()
             sender_transaction.calculate_saldo()
             recipient_transaction.calculate_saldo()
-            print("Successfully transferred between accounts")
             return redirect(url_for("accounts.show", account_id=sender_account_id))
         except:
             print("Something went wrong")

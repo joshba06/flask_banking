@@ -7,6 +7,8 @@ body {
   width: 85%;
   margin: 0px auto;
   border: 1px solid black;
+  min-height: 100vh;
+  padding-bottom: 1rem;
 }
 
 /* div {
@@ -143,6 +145,8 @@ body {
   padding: 1rem;
   background: white;
   box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  overflow: scroll;
+  max-height: 400px;
 }
 .activities-analytics{
   border: 1px solid black;
