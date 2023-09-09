@@ -52,7 +52,6 @@ class FilterForm(FlaskForm):
 @accounts_bp.route("/accounts", methods=["GET"])
 def index():
     accounts = Account.query.all()
-    print(accounts)
     return render_template('accounts/show.html',
                            accounts=accounts)
 
