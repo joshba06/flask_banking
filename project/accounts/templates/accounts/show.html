@@ -99,7 +99,7 @@
     </div>
     <div class="subaccount-transfer">
       <div class="section-title">SUBACCOUNT TRANSFER</div>
-      <form action="#" method="post" class="form-inline needs-validation form-subaccount-transfer" novalidate>
+      <form action="{{ url_for('accounts.subaccount_transfer', sender_account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-subaccount-transfer" novalidate>
         {{ subaccount_transfer_form.hidden_tag() }}
 
         <div class="input-group input-group-sm mr-2">

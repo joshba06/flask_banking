@@ -48,7 +48,7 @@ class Transaction(Base):
         else:
             self.amount = decimal.Decimal(amount)
 
-        if category not in ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
+        if category not in ["Transfer", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
             raise ValueError("Invalid category value.")
         self.category = category
 
@@ -67,7 +67,8 @@ class Transaction(Base):
     def calculate_saldo(self):
         # Calculate the saldo by summing up the "amount" of older transactions
         saldo_previous_transactions = db_session.query(func.sum(Transaction.amount)).filter(
-            Transaction.date_booked < self.date_booked
+            Transaction.date_booked < self.date_booked,
+            Transaction.account_id == self.account_id
         ).scalar()
 
         # If there are no older transactions, saldo is the same as the current transaction's amount

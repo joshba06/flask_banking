@@ -124,20 +124,27 @@ def create(account_id):
         except:
             print("Something went wrong")
 
-# @accounts_bp.route("/accounts/<int:account_id>/subaccount_transfer", methods=["POST"])
-# def subaccount_transfer(account_id)):
-#     sender_account = Account.query.get(account_id)
+@accounts_bp.route("/accounts/<int:sender_account_id>/subaccount_transfer", methods=["POST"])
+def subaccount_transfer(sender_account_id):
 
-#     subaccount_transfer_form = SubaccountTransferForm()
+    subaccount_transfer_form = SubaccountTransferForm()
 
-#     if subaccount_transfer_form.validate_on_submit():
-#         recipient_account =
-#         new_transaction = Transaction(subaccount_transfer_form.description.data, subaccount_transfer_form.amount.data, transaction_form.category.data)
-#         try:
-#             account.transactions.append(new_transaction)
-#             db_session.add(account)
-#             db_session.commit()
-#             new_transaction.calculate_saldo()
-#             return redirect(url_for("accounts.show", account_id=account_id))
-#         except:
-#             print("Something went wrong")
+    sender_account = Account.query.get(sender_account_id)
+    recipient_account = Account.query.filter(Account.iban==subaccount_transfer_form.recipient.data).one()
+
+    if subaccount_transfer_form.validate_on_submit():
+        sender_transaction = Transaction(subaccount_transfer_form.description.data, -subaccount_transfer_form.amount.data, "Transfer")
+        sender_account.transactions.append(sender_transaction)
+
+        recipient_transaction = Transaction(subaccount_transfer_form.description.data, subaccount_transfer_form.amount.data, "Transfer")
+        recipient_account.transactions.append(recipient_transaction)
+
+        try:
+            db_session.add_all([sender_transaction, recipient_transaction])
+            db_session.commit()
+            sender_transaction.calculate_saldo()
+            recipient_transaction.calculate_saldo()
+            print("Successfully transferred between accounts")
+            return redirect(url_for("accounts.show", account_id=sender_account_id))
+        except:
+            print("Something went wrong")
