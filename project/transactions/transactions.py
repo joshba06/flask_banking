@@ -213,7 +213,6 @@ def index():
                             transactions_sum=transactions_sum)
 
 
-
 ## API endpoints
 def transactions_to_json(transaction_list):
     json_transactions = []

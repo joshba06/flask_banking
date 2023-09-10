@@ -6,15 +6,15 @@
 
 <div class="accounts-heading">
   <h1>Your Accounts</h1>
-  <a href="#" class="btn btn-outline-primary">New Account +</a>
+  <a href="#" id="showNewAccountBtn" class="btn btn-outline-primary">New Account +</a>
 </div>
 <div class="accounts-selector">
   {% for account in accounts %}
-    <a class="card-account-link-area" id="{{ 'active-account' if account.id == active_account_id }}" href="{{ url_for('accounts.show', account_id=account.id) }}">
-      <div class="card-account">
+    <div class="account-shell" id="{{ 'active-account' if account.id == active_account_id }}">
+      <a class="card-account" href="{{ url_for('accounts.show', account_id=account.id) }}">
         <div class="top">
-          <div class="logo" style="padding-right:5px;">Logo</div>
-          <div class="account-iban">{{account.iban}}</div>
+          <div class="logo"><i class="fas fa-regular fa-credit-card"></i></div>
+          <div class="account-iban">{{account.iban[:5]}}...{{account.iban[-2:]}}</div>
         </div>
         <div class="middle account-title">
           {{account.title}}
@@ -22,8 +22,14 @@
         <div class="bottom account-saldo">
           {{ format_currency(account_saldos[account.id]) }} €
         </div>
+      </a>
+      <div class="account-options">
+        {% if account.id == active_account_id %}
+        <a href="#" id="showEditAccountBtn">Edit</a>
+        {% endif %}
       </div>
-    </a>
+    </div>
+
   {% endfor%}
 </div>
 <div class="activities-heading">
@@ -63,7 +69,7 @@
   <div class="activities-menu-separator"></div>
   <div class="activities-actions">
     <div class="btn-group" role="group"">
-      <button type="button" id="show-new-transaction-field" class="btn btn-sm btn-primary" style="margin-right:2px;">Transfer</button>
+      <button type="button" id="show-new-transaction-field" class="btn btn-sm btn-primary" style="margin-right:2px;">Transfer</button><i class="fas fa-solid fa-cash-register"></i>
       <button type="button" class="btn btn-sm btn-primary">Export</button>
     </div>
   </div>
@@ -124,6 +130,10 @@
 
 </div>
 
+<!-- <div class="activities-section-title">
+  <div class="transactions">Transactions</div>
+  <div class="statistics">Statistics</div>
+</div> -->
 <div class="activities-content">
   <div class="activities-table">
     <table class="table">
@@ -150,7 +160,7 @@
           <td></td>
           <td></td>
           <td></td>
-          <td class="text-right" style="font-weight: bold">Sum: {{ format_currency(transactions_table_sum) }}</td>
+          <td class="text-right" style="font-weight: bold">Sum: {{ format_currency(transactions_table_sum) }} €</td>
           <td></td>
         </tr>
       </tbody>
@@ -158,9 +168,96 @@
 
   </div>
   <div class="activities-analytics">
-    Analytics
+    <div class="card-income"></div>
+    <div class="card-expenses"></div>
   </div>
 </div>
+
+<!-- New Account Modal Overlay -->
+<div id="overlay_new_account">
+  <div class="d-flex justify-content-center align-items-center" style="height: 100%;">
+      <div class="card-new-account col-4">
+          <button id="closeNewAccountBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+          <h4 class="mb-4" style="text-align: center;">New Account</h4>
+          <div class="form-content">
+            <form id="newAccountForm" class="col-12" action="{{ url_for('accounts.create_account') }}", method="post">
+              {{ account_form.hidden_tag() }}
+              <!-- Title -->
+              <div class="form-group col-12">
+                <label for="accountTitleInput">Title</label>
+                {{ account_form.title(class_="form-control", id="accountTitleInput") }}
+              </div>
+              <!-- Icon (coming soon) -->
+              <div class="form-group col-12">
+                <label for="accountIconInput">Icon</label>
+                {{ account_form.icon(class_="form-control" ,id="accountIconInput") }}
+              </div>
+              <!-- IBAN (coming soon) -->
+              <div class="form-group col-12">
+                <label for="accountIbanInput">IBAN</label>
+                {{ account_form.icon(class_="form-control" ,id="accountIbanInput") }}
+              </div>
+              <div class="form-group col-12">
+                <div class="form-check p-0">
+                  {{ account_form.accept_terms(id="invalidCheck")}}
+                  <label class="form-check-label" for="invalidCheck">
+                    Agree to terms and conditions
+                  </label>
+                </div>
+              </div>
+              <div class="d-flex justify-content-center">
+                {{ account_form.submit(class_="btn btn-primary") }}
+              </div>
+            </form>
+          </div>
+      </div>
+  </div>
+</div>
+
+<div id="overlay_edit_account">
+  <div class="d-flex justify-content-center align-items-center" style="height: 100%;">
+      <div class="card-edit-account col-4">
+          <button id="closeEditAccountBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+          <h4 class="mb-4" style="text-align: center;">Edit Account</h4>
+          <div class="form-content">
+            <form id="editAccountForm" class="col-12" action="{{ url_for('accounts.update', account_id=active_account_id) }}", method="post">
+              {{ edit_account_form.hidden_tag() }}
+              <!-- Title -->
+              <div class="form-group col-12">
+                <label for="accountTitleInput">Title</label>
+                {{ edit_account_form.title(class_="form-control", id="accountTitleInput") }}
+              </div>
+              <!-- Icon (coming soon) -->
+              <div class="form-group col-12">
+                <label for="accountIconInput">Icon</label>
+                {{ edit_account_form.icon(class_="form-control" ,id="accountIconInput") }}
+              </div>
+              <!-- IBAN (coming soon) -->
+              <div class="form-group col-12">
+                <label for="accountIbanInput">IBAN</label>
+                {{ edit_account_form.icon(class_="form-control" ,id="accountIbanInput") }}
+              </div>
+              <div class="d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary">Update</button>
+              </div>
+            </form>
+            <form id="deleteAccountForm" class="col-12" action="{{ url_for('accounts.delete', account_id=active_account_id) }}", method="post">
+              {{ delete_account_form.hidden_tag() }}
+              <div class="d-flex justify-content-center align-items-center py-4">
+                <div class="spacer col-4" style="border-bottom: 0.5px solid grey;"></div>
+                <div class="px-2" style="color: grey;">Danger</div>
+                <div class="spacer col-4" style="border-bottom: 0.5px solid grey;"></div>
+              </div>
+              <div class="d-flex justify-content-center">
+                <button id="delete-account-btn" type="submit" class="btn btn-sm btn-danger">Delete Account</button>
+              </div>
+            </form>
+          </div>
+      </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
 
 <!-- JavaScript -->

@@ -40,49 +40,73 @@ body {
   justify-content: flex-start;
   align-items: center;
 }
-.card-account-link-area{
-  border-radius: 10px;
+
+.account-shell {
+  display: flex;
+}
+
+.card-account{
+  border-radius: 20px;
   height: 150px;
   width: 150px;
-  margin-right: 20px;
   background-color: white;
   box-shadow: 0 0 15px rgba(0,0,0,0.2);
   color: #264A8E;
   text-decoration: none;
 }
 
-.card-account-link-area:link { text-decoration: none; color: #264A8E;}
+.card-account:link { text-decoration: none; color: #264A8E;}
+.card-account:visited { text-decoration: none; color: #264A8E;}
+.card-account:hover { text-decoration: none; color: white; background-color: #113474;}
+.card-account:active { text-decoration: none; color: #264A8E;}
 
-
-.card-account-link-area:visited { text-decoration: none; color: #264A8E;}
-
-
-.card-account-link-area:hover { text-decoration: none; color: white; background-color: #113474;}
-
-.card-account-link-area:active { text-decoration: none; color: #264A8E;}
-
-#active-account {
+#active-account > .card-account {
   background-color: #33438D;
   color: white;
   box-shadow: 0 0 15px rgba(0,0,0,0.2);
 }
+
 .card-account .top {
-    margin-top: 15px;
-    margin-left: 10px;
+    margin-top: 25px;
+    margin-left: 20px;
     width: 130px;
     display: flex;
     justify-content: flex-start;
 }
+.card-account .top .logo {
+  padding-right: 5px;
+}
+
 .card-account .middle {
   margin-top: 35px;
-  margin-left: 10px;
-  width: 130px;
+  margin-left: 20px;
+  font-weight: 500;
+  width: 110px;
+  overflow: hidden;
+  white-space: nowrap;
+
 }
 .card-account .bottom {
-  margin-top: 10px;
-  margin-left: 10px;
+  margin-top: 5px;
+  margin-left: 20px;
   width: 130px;
 }
+.account-iban {
+  width: 90px;
+  overflow-x: hidden;
+}
+
+.account-options {
+  margin-right: 10px;
+  margin-left: 10px;
+  padding-top: 60px;
+}
+
+#active-account > .account-options {
+  /* padding-left: 10px; */
+  padding-right: 10px;
+}
+
 
 .activities-heading {
   width: 90%;
@@ -148,10 +172,42 @@ body {
   overflow: scroll;
   max-height: 400px;
 }
-.activities-analytics{
-  border: 1px solid black;
-  width: 20%;
+.activities-section-title {
+  width: 90%;
   margin: 0px auto;
+  border-radius: 8px;
+  border: 1px solid black;
+  display: flex;
+}
+.activities-section-title .transactions {
+  width: 75%;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  color: grey;
+  font-weight: 500;
+}
+.activities-section-title .statistics {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 1rem;
+  color: grey;
+  font-weight: 500;
+}
+.activities-analytics{
+  width: 25%;
+}
+
+.card-income, .card-expenses {
+  width: 200px;
+  height: 80px;
+  border-radius: 5px;
+  margin-left: auto;
+  margin-right: 0;
+  margin-bottom: 1rem;
+
+  background: white;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
+
 }
 
 .table td, .table th {
@@ -199,4 +255,34 @@ body {
   color: grey;
   font-size: 0.9rem;
   margin-bottom: 0.7rem;
+}
+
+
+/* Modals */
+#overlay_new_account, #overlay_edit_account {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+}
+
+#closeEditAccountBtn, #closeNewAccountBtn{
+  position: absolute; top: 5px; right: 10px;
+}
+
+#overlay_new_account .card-new-account {
+  background-color: white;
+  padding: 4rem;
+  border-radius: 10px;
+}
+
+
+#overlay_edit_account .card-edit-account {
+  background-color: white;
+  padding: 4rem;
+  border-radius: 10px;
 }

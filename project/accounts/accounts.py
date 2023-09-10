@@ -6,10 +6,11 @@ from flask import (
 
 # Basics
 from pprint import pprint
+import random
 
 # Forms
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, DecimalField, DateField, SelectField
+from wtforms import StringField, SubmitField, DecimalField, DateField, SelectField, BooleanField
 from wtforms.validators import DataRequired
 
 
@@ -35,7 +36,7 @@ class SubaccountTransferForm(FlaskForm):
     description = StringField("Subaccount transfer description", validators=[DataRequired()], render_kw={"placeholder": "Reference"})
     choices = ["Recipient"]
     for account in Account.query.all():
-        choices.append(account.iban)
+        choices.append(account.title)
     recipient = SelectField("Recipient", choices = choices, render_kw={"placeholder": "Recipient"})
     amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
     submit = SubmitField("Add")
@@ -49,12 +50,17 @@ class FilterForm(FlaskForm):
     submit = SubmitField("Filter")
     clear = SubmitField("Clear")
 
+class AccountForm(FlaskForm):
+    title = StringField("Title", render_kw={"placeholder": "e.g. 'Main' or 'Savings'"})
+    iban = SelectField("Iban", choices = ["Coming soon..."], render_kw = {'disabled': 'disabled'})
+    icon = SelectField("Icon", choices = ["Coming soon..."], render_kw = {'disabled': 'disabled'})
+    accept_terms = BooleanField("Terms", validators=[DataRequired()])
+    submit = SubmitField("Create")
+    delete = SubmitField("Delete")
 
-# @accounts_bp.route("/accounts", methods=["GET"])
-# def index():
-#     accounts = Account.query.all()
-#     return render_template('accounts/show.html',
-#                            accounts=accounts)
+class DeleteAccountForm(FlaskForm):
+    delete = SubmitField("Delete")
+
 
 @accounts_bp.route("/accounts/<int:account_id>", methods=["GET", "POST"])
 def show(account_id):
@@ -120,6 +126,10 @@ def show(account_id):
         return formatted_value
 
 
+    # Create new account / edit account details form
+    account_form = AccountForm()
+    edit_account_form = AccountForm(obj=Account.query.get(account_id))
+    delete_account_form = DeleteAccountForm()
 
     return render_template('accounts/show.html',
                         active_account_id=account_id,
@@ -131,8 +141,76 @@ def show(account_id):
                         account_saldos=account_saldos,
                         transaction_form=transaction_form,
                         subaccount_transfer_form=subaccount_transfer_form,
-                        format_currency=format_currency
+                        format_currency=format_currency,
+                        account_form=account_form,
+                        edit_account_form=edit_account_form,
+                        delete_account_form=delete_account_form
                         )
+
+
+@accounts_bp.route("/accounts/create", methods=["POST"])
+def create_account():
+
+    account_form = AccountForm()
+
+    # Create new iban
+    iban = "GB29000060161331926819"
+    all_ibans = [account.iban for account in Account.query.all()]
+    iban_invalid = True
+    increment = 1
+    while iban_invalid:
+        last_four = iban[-4:]
+        incremented_value = int(last_four) + increment
+        if incremented_value == 10000:
+            incremented_value = 0
+        new_last_four = "{:04}".format(incremented_value)
+        new_iban = iban[:-4] + new_last_four
+        if new_iban not in all_ibans:
+            iban_invalid = False
+        else:
+            increment += 1
+
+    new_account = Account(iban=new_iban, title=account_form.title.data)
+    try:
+        db_session.add(new_account)
+        db_session.commit()
+        print(f"Successfully added new account: {new_account}")
+        return redirect(url_for("accounts.show", account_id=new_account.id))
+    except:
+        print("Something went wrong")
+        return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
+
+
+@accounts_bp.route("/accounts/<int:account_id>/update", methods=["POST"])
+def update(account_id):
+
+    edit_account_form = AccountForm()
+
+    account = Account.query.get(account_id)
+    account.title = edit_account_form.title.data
+
+    try:
+        db_session.add(account)
+        db_session.commit()
+    except:
+        print("Something went wrong")
+
+    return redirect(url_for("accounts.show", account_id=account_id))
+
+@accounts_bp.route("/accounts/<int:account_id>/delete", methods=["POST"])
+def delete(account_id):
+
+    try:
+        Account.query.filter_by(id=account_id).delete()
+        db_session.commit()
+        print("Deleted account")
+        return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
+    except:
+        print("Something went wrong")
+        return redirect(url_for("accounts.show", account_id=account_id))
+
+
+
 
 
 @accounts_bp.route("/accounts/<int:account_id>/transactions", methods=["POST"])
