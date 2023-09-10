@@ -26,6 +26,8 @@ def create_app(test_setup=False):
         })
     init_db()
 
+    
+
     from flask_fontawesome import FontAwesome
     fa = FontAwesome(app)
 

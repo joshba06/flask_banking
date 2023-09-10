@@ -1,4 +1,4 @@
-body {
+ body {
   color: #264A8E;
   background-color: #F4F4F4;
 }
@@ -8,6 +8,35 @@ body {
   margin: 0px auto;
   min-height: 100vh;
   padding-bottom: 1rem;
+}
+
+.custom-icon {
+  width: 18px;
+  height: 16px;
+  font-weight: 900;
+  line-height: 1;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+
+}
+.icon-primary {
+  filter: invert(24%) sepia(47%) saturate(1353%) hue-rotate(190deg) brightness(98%) contrast(93%);
+}
+.icon-white {
+  filter: invert(99%) sepia(65%) saturate(2%) hue-rotate(275deg) brightness(114%) contrast(100%);
+}
+.icon-green {
+  width: 30px;
+  padding-bottom: 5px;
+  height: auto;
+  filter: invert(82%) sepia(46%) saturate(695%) hue-rotate(25deg) brightness(89%) contrast(86%);
+}
+.icon-red {
+  width: 30px;
+  padding-bottom: 5px;
+  height: auto;
+  filter: invert(30%) sepia(88%) saturate(2430%) hue-rotate(1deg) brightness(101%) contrast(107%);
 }
 
 /* div {
@@ -164,7 +193,7 @@ body {
 }
 
 .activities-table{
-  width: 75%;
+  width: 80%;
   border-radius: 8px;
   padding: 1rem;
   background: white;
@@ -191,23 +220,61 @@ body {
   padding-bottom: 0.5rem;
   padding-left: 1rem;
   color: grey;
-  font-weight: 500;
 }
 .activities-analytics{
-  width: 25%;
+  width: 20%;
 }
 
 .card-income, .card-expenses {
-  width: 200px;
-  height: 80px;
+  height: 100px;
+  padding: 1rem;
   border-radius: 5px;
-  margin-left: auto;
+  margin-left: 1rem;
   margin-right: 0;
   margin-bottom: 1rem;
 
   background: white;
   box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+.more-analytics {
+  width: 200px;
+  margin-left: auto;
+  margin-right: 0;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-around;
+}
+.more-analytics a {
+  text-decoration: none;
+}
 
+.more-analytics a:link { text-decoration: none; color: #264A8E;}
+.more-analytics a:visited { text-decoration: none; color: #264A8E;}
+.more-analytics a:hover { text-decoration: underline; color: #264A8E}
+.more-analytics a:active { text-decoration: none; color: #264A8E;}
+
+
+.activities-analytics .card-title {
+  margin-bottom: 0px !important;
+}
+.activities-analytics .card-content {
+  font-size: 2rem;
+  font-weight: 400;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 0.5rem;
+
+}
+
+.activities-content-infotext {
+  color: rgb(166, 165, 165);
+}
+.activities-content-infotext .spacer {
+  border-bottom: 0.5px solid rgb(166, 165, 165);
+}
+#filterInfoText {
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 .table td, .table th {
@@ -257,6 +324,9 @@ body {
   margin-bottom: 0.7rem;
 }
 
+#new-transaction-recipient {
+  width: 100px;
+}
 
 /* Modals */
 #overlay_new_account, #overlay_edit_account {

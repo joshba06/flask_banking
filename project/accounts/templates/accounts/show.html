@@ -25,7 +25,7 @@
       </a>
       <div class="account-options">
         {% if account.id == active_account_id %}
-          <a href="#" id="showEditAccountBtn">Edit</a>
+          <a href="#" id="showEditAccountBtn"><img src="{{url_for('static', filename='images/pen-to-square-solid.svg')}}" class="custom-icon icon-primary"></a>
         {% endif %}
       </div>
     </div>
@@ -69,8 +69,8 @@
   <div class="activities-menu-separator"></div>
   <div class="activities-actions">
     <div class="btn-group" role="group"">
-      <button type="button" id="show-new-transaction-field" class="btn btn-sm btn-primary" style="margin-right:2px;">Transfer</button><i class="fas fa-solid fa-cash-register"></i>
-      <button type="button" class="btn btn-sm btn-primary">Export</button>
+      <button type="button" id="show-new-transaction-field" class="btn btn-sm btn-primary" style="margin-right:2px;"><img src="{{url_for('static', filename='images/new-transfer.svg')}}" class="custom-icon icon-white mr-1">Transfer</button>
+      <button type="button" class="btn btn-sm btn-primary"><img src="{{url_for('static', filename='images/download-solid.svg')}}" class="custom-icon icon-white mr-1">Export</button>
     </div>
   </div>
 </div>
@@ -82,7 +82,7 @@
   <div class="forms">
     <div class="standard-payment">
       <div class="section-title">STANDARD PAYMENT</div>
-      <form action="{{ url_for('accounts.create', account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-standard-payment" novalidate>
+      <form action="{{ url_for('transactions.create', account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-standard-payment" novalidate>
         {{ transaction_form.hidden_tag() }}
 
         <div class="input-group input-group-sm mr-2">
@@ -105,35 +105,31 @@
     </div>
     <div class="subaccount-transfer">
       <div class="section-title">SUBACCOUNT TRANSFER</div>
-      <form action="{{ url_for('accounts.subaccount_transfer', sender_account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-subaccount-transfer" novalidate>
+      <form action="{{ url_for('transactions.create_subaccount_transfer', sender_account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-subaccount-transfer" novalidate>
         {{ subaccount_transfer_form.hidden_tag() }}
-
         <div class="input-group input-group-sm mr-2">
           {{ subaccount_transfer_form.description(class_="form-control",  aria_describedby="inputGroup-sizing-sm") }}
         </div>
-
         <div class="input-group input-group-sm mr-2">
           {{ subaccount_transfer_form.recipient(class_="custom-select", id="new-transaction-recipient") }}
         </div>
-
-
         <div class="input-group input-group-sm mr-2">
           {{ subaccount_transfer_form.amount(class_="form-control", style="width:100px") }}
         </div>
-
         <div class="input-group input-group-sm mr-2">
           {{ subaccount_transfer_form.submit(class_="btn btn-sm btn-success") }}
         </div>
       </form>
     </div>
   </div>
-
 </div>
 
-<!-- <div class="activities-section-title">
-  <div class="transactions">Transactions</div>
-  <div class="statistics">Statistics</div>
-</div> -->
+<div class="activities-content-infotext d-flex justify-content-center align-items-center my-3">
+  <div class="spacer col-4 mx-3"></div>
+  <span id="filterInfoText">Displaying: {{"Last 30 days" if default_transactions_filter else "Custom Filter"}}</span>
+  <div class="spacer col-4 mx-3"></div>
+</div>
+
 <div class="activities-content">
   <div class="activities-table">
     <table class="table">
@@ -168,8 +164,17 @@
 
   </div>
   <div class="activities-analytics">
-    <div class="card-income"></div>
-    <div class="card-expenses"></div>
+    <div class="card-income">
+      <div class="card-title">Income <img src="{{url_for('static', filename='images/arrow-trend-up-solid.svg')}}" class="custom-icon icon-green mr-1"></div>
+      <div class="card-content">{{ format_currency(transaction_statistics['income']) }}€</div>
+    </div>
+    <div class="card-expenses">
+      <div class="card-title">Expenses <img src="{{url_for('static', filename='images/arrow-trend-down-solid.svg')}}" class="custom-icon icon-red mr-1"></div>
+      <div class="card-content">{{ format_currency(transaction_statistics['expenses']) }}€</div>
+    </div>
+    <div class="more-analytics">
+      <a href="#">More analytics <img src="{{url_for('static', filename='images/circle-right-regular.svg')}}" class="custom-icon icon-primary mr-1"></a>
+    </div>
   </div>
 </div>
 
@@ -180,7 +185,7 @@
           <button id="closeNewAccountBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
           <h4 class="mb-4" style="text-align: center;">New Account</h4>
           <div class="form-content">
-            <form id="newAccountForm" class="col-12" action="{{ url_for('accounts.create_account') }}", method="post">
+            <form id="newAccountForm" class="col-12" action="{{ url_for('accounts.create') }}", method="post">
               {{ account_form.hidden_tag() }}
               <!-- Title -->
               <div class="form-group col-12">

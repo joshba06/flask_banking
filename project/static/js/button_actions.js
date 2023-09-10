@@ -22,15 +22,19 @@ document.addEventListener("DOMContentLoaded", function() {
 document.addEventListener("DOMContentLoaded", function() {
   var selectElement = document.getElementById('new-transaction-recipient');
   var accountNameDiv = document.querySelector('#active-account .account-title')
+  var accountIbanDiv = document.querySelector('#active-account .account-iban')
 
   // If the ibanDiv exists, return its text content
-  if (accountNameDiv) {
+  if (accountNameDiv && accountIbanDiv) {
     const accountTitle =  accountNameDiv.textContent.trim();
-    console.log(`Found account title: ${accountTitle}`)
+    const accountIban = accountIbanDiv.textContent.trim();
+    console.log(`Found account title: ${accountTitle} and iban: ${accountIban}`)
 
     // Loop over the options in the select element
+    const searchTerm = `${accountTitle} (${accountIban.slice(0, 4)}...${accountIban.slice(-2)})`
+    console.log(`Search term ${searchTerm}`)
     for (var i = 0; i < selectElement.options.length; i++) {
-      if (selectElement.options[i].value === accountTitle) {
+      if (selectElement.options[i].value === searchTerm) {
           selectElement.removeChild(selectElement.options[i]);
           console.log("Removed active account from dropdown")
           break; // Exit the loop once the option is found and removed

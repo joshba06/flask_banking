@@ -2,7 +2,7 @@
 from flask import (
     Blueprint, redirect, render_template, request, url_for, jsonify, abort
 )
-
+from datetime import datetime, timedelta
 
 # Basics
 from pprint import pprint
@@ -18,6 +18,9 @@ from wtforms.validators import DataRequired
 from project.models import Account, Transaction
 from project.db import db_session
 
+# Forms
+from project.transactions.transactions import TransactionForm, SubaccountTransferForm
+
 
 # Define the name of this blueprint and which url its reached under. This has to be registered in create_app()
 accounts_bp = Blueprint('accounts', __name__,
@@ -26,20 +29,6 @@ accounts_bp = Blueprint('accounts', __name__,
                static_url_path='assets')
 
 
-class TransactionForm(FlaskForm):
-    description = StringField("Transaction description", validators=[DataRequired()], render_kw={"placeholder": "Reference"})
-    category = SelectField("Category", choices = ["Category", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"])
-    amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
-    submit = SubmitField("Add")
-
-class SubaccountTransferForm(FlaskForm):
-    description = StringField("Subaccount transfer description", validators=[DataRequired()], render_kw={"placeholder": "Reference"})
-    choices = ["Recipient"]
-    for account in Account.query.all():
-        choices.append(account.title)
-    recipient = SelectField("Recipient", choices = choices, render_kw={"placeholder": "Recipient"})
-    amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
-    submit = SubmitField("Add")
 
 class FilterForm(FlaskForm):
     search_type = SelectField('Search type', choices = ["Matches", "Includes"])
@@ -68,11 +57,14 @@ def show(account_id):
     account = Account.query.get(account_id)
     all_accounts = Account.query.all()
 
+    default_transactions_filter = True
+
     # Transactions filter. By default, show only transactions belonging to current account
     filter_form = FilterForm()
     if request.method == 'POST' and filter_form.clear.data:
         return redirect(url_for("accounts.show", account_id=account_id))
     elif request.method == 'POST' and filter_form.submit.data:
+        default_transactions_filter = False
         category = None if filter_form.category.data == "-Category-" else filter_form.category.data
         transactions = Transaction.read_all(account_id=account_id,
                                             start_date = filter_form.start_date.data,
@@ -81,7 +73,15 @@ def show(account_id):
                                             search_type=filter_form.search_type.data,
                                             transaction_description=filter_form.transaction_description.data)
     else:
-        transactions = Transaction.read_all(account_id=account_id)
+        date_30_days_ago = (datetime.today() - timedelta(days=30)).date()
+        transactions = Transaction.read_all(start_date=date_30_days_ago, account_id=account_id)
+
+
+    # Extract data for transaction statistics
+    transaction_statistics = {}
+    transaction_statistics['income'] = sum([transaction.amount for transaction in transactions if transaction.amount > 0])
+    transaction_statistics['expenses'] = sum([transaction.amount for transaction in transactions if transaction.amount < 0])
+
 
     # Extract unique transaction descriptions for display in autocomplete field
     autocomplete_descriptions = list(set([transaction.description for transaction in transactions]))
@@ -144,12 +144,14 @@ def show(account_id):
                         format_currency=format_currency,
                         account_form=account_form,
                         edit_account_form=edit_account_form,
-                        delete_account_form=delete_account_form
+                        delete_account_form=delete_account_form,
+                        default_transactions_filter=default_transactions_filter,
+                        transaction_statistics=transaction_statistics
                         )
 
 
 @accounts_bp.route("/accounts/create", methods=["POST"])
-def create_account():
+def create():
 
     account_form = AccountForm()
 
@@ -208,50 +210,3 @@ def delete(account_id):
     except:
         print("Something went wrong")
         return redirect(url_for("accounts.show", account_id=account_id))
-
-
-
-
-
-@accounts_bp.route("/accounts/<int:account_id>/transactions", methods=["POST"])
-def create(account_id):
-
-    account = Account.query.get(account_id)
-
-    transaction_form = TransactionForm()
-
-    if transaction_form.validate_on_submit():
-        new_transaction = Transaction(transaction_form.description.data, transaction_form.amount.data, transaction_form.category.data)
-        try:
-            account.transactions.append(new_transaction)
-            db_session.add(account)
-            db_session.commit()
-            new_transaction.calculate_saldo()
-            print(f"Added new transaction: {new_transaction}")
-            return redirect(url_for("accounts.show", account_id=account_id))
-        except:
-            print("Something went wrong")
-
-@accounts_bp.route("/accounts/<int:sender_account_id>/subaccount_transfer", methods=["POST"])
-def subaccount_transfer(sender_account_id):
-
-    subaccount_transfer_form = SubaccountTransferForm()
-
-    sender_account = Account.query.get(sender_account_id)
-    recipient_account = Account.query.filter(Account.iban==subaccount_transfer_form.recipient.data).one()
-
-    if subaccount_transfer_form.validate_on_submit():
-        sender_transaction = Transaction(subaccount_transfer_form.description.data, -subaccount_transfer_form.amount.data, "Transfer")
-        sender_account.transactions.append(sender_transaction)
-
-        recipient_transaction = Transaction(subaccount_transfer_form.description.data, subaccount_transfer_form.amount.data, "Transfer")
-        recipient_account.transactions.append(recipient_transaction)
-
-        try:
-            db_session.add_all([sender_transaction, recipient_transaction])
-            db_session.commit()
-            sender_transaction.calculate_saldo()
-            recipient_transaction.calculate_saldo()
-            return redirect(url_for("accounts.show", account_id=sender_account_id))
-        except:
-            print("Something went wrong")
