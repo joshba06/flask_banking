@@ -18,28 +18,27 @@ document.addEventListener("DOMContentLoaded", function() {
 
 });
 
-// SUBACCOUNT TRANSFER: Remove active account id from dropdown
+// SUBACCOUNT TRANSFER: Remove active account from dropdown
 document.addEventListener("DOMContentLoaded", function() {
   var selectElement = document.getElementById('new-transaction-recipient');
-  var ibanDiv = document.querySelector('#active-account .account-iban')
+  var accountNameDiv = document.querySelector('#active-account .account-title')
 
   // If the ibanDiv exists, return its text content
-  if (ibanDiv) {
-    const iban =  ibanDiv.textContent.trim();
-    console.log(`Found iban: ${iban}`)
+  if (accountNameDiv) {
+    const accountTitle =  accountNameDiv.textContent.trim();
+    console.log(`Found account title: ${accountTitle}`)
 
     // Loop over the options in the select element
     for (var i = 0; i < selectElement.options.length; i++) {
-      if (selectElement.options[i].value === iban) {
+      if (selectElement.options[i].value === accountTitle) {
           selectElement.removeChild(selectElement.options[i]);
-          console.log("Removed iban from dropdown")
+          console.log("Removed active account from dropdown")
           break; // Exit the loop once the option is found and removed
       }
     }
   }
   else {
-    const iban = null;
-    console.log(`Couldnt find iban`)
+    console.log(`Couldnt find account title`)
   }
 
 });
