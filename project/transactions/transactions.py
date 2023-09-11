@@ -1,6 +1,6 @@
 # Flask
 from flask import (
-    Blueprint, redirect, url_for, jsonify, abort, request
+    Blueprint, redirect, url_for, jsonify, abort, request, flash
 )
 
 # CSV download
@@ -229,9 +229,11 @@ def create(account_id):
             db_session.commit()
             new_transaction.calculate_saldo()
             print(f"Added new transaction: {new_transaction}")
+            flash('Successfully created new transaction.', "success")
             return redirect(url_for("accounts.show", account_id=account_id))
         except:
             print("Something went wrong")
+            flash('Successfully went wrong while creating new transaction.', "error")
 
 @transactions_bp.route("/accounts/<int:sender_account_id>/transactions/create_subaccount_transfer", methods=["POST"])
 def create_subaccount_transfer(sender_account_id):
@@ -258,9 +260,11 @@ def create_subaccount_transfer(sender_account_id):
             db_session.commit()
             sender_transaction.calculate_saldo()
             recipient_transaction.calculate_saldo()
+            flash('Successfully created new transfer.', "success")
             return redirect(url_for("accounts.show", account_id=sender_account_id))
         except:
             print("Something went wrong")
+            flash('Successfully went wrong while creating new transfer.', "error")
 
 
 @transactions_bp.route('/download_csv', methods=['POST'])
@@ -302,8 +306,10 @@ def download_csv():
 
         response = Response(generate(), mimetype='text/csv')
         response.headers.set("Content-Disposition", "attachment", filename="data.csv")
+        flash('Successfully downloaded csv.', "success")
         return response
     except:
+        flash('Successfully went wrong while downloading csv.', "error")
         return redirect(url_for("accounts.show", account_id=1))
 
 

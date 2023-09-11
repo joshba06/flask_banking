@@ -356,3 +356,15 @@
   padding: 4rem;
   border-radius: 10px;
 }
+
+#flash-messages-container {
+  max-width: 300px;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.alert {
+  display: flex;
+}

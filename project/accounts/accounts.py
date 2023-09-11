@@ -1,6 +1,6 @@
 # Flask
 from flask import (
-    Blueprint, redirect, render_template, request, url_for
+    Blueprint, redirect, render_template, request, url_for, flash
 )
 from datetime import datetime, timedelta
 
@@ -182,10 +182,12 @@ def create():
     try:
         db_session.add(new_account)
         db_session.commit()
-        print(f"Successfully added new account: {new_account}")
+        print(f"Successfully created new account: {new_account}")
+        flash('Successfully created new account.', "success")
         return redirect(url_for("accounts.show", account_id=new_account.id))
     except:
         print("Something went wrong")
+        flash('Something went wrong while creating new account', "error")
         return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
 
 @accounts_bp.route("/accounts/<int:account_id>/update", methods=["POST"])
@@ -199,8 +201,10 @@ def update(account_id):
     try:
         db_session.add(account)
         db_session.commit()
+        flash('Successfully updated account info.', "success")
     except:
         print("Something went wrong")
+        flash('Something went wrong while updating account info', "error")
 
     return redirect(url_for("accounts.show", account_id=account_id))
 
@@ -211,7 +215,9 @@ def delete(account_id):
         Account.query.filter_by(id=account_id).delete()
         db_session.commit()
         print("Deleted account")
+        flash('Successfully deleted account.', "success")
         return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
     except:
         print("Something went wrong")
+        flash('Something went wrong while deleting account', "error")
         return redirect(url_for("accounts.show", account_id=account_id))
