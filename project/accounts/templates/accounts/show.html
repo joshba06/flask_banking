@@ -1,6 +1,8 @@
 {% extends 'main/base.html' %}
 
-{% block title %}Banking{% endblock %}
+{% block title %}
+Joshba06 Banking
+{% endblock %}
 
 {% block content %}
 
@@ -126,7 +128,16 @@
 
 <div class="activities-content-infotext d-flex justify-content-center align-items-center my-3">
   <div class="spacer col-4 mx-3"></div>
-  <span id="filterInfoText">Displaying: {{"Last 30 days" if default_transactions_filter else "Custom Filter"}}</span>
+  <span id="filterInfoText">
+    Displaying:
+    {% if transactions_filter == "cleared" %}
+    All Transactions
+    {% elif transactions_filter == "default_30_days" %}
+    Last 30 days (default)
+    {% else %}
+    Custom Filter
+    {% endif %}
+  </span>
   <div class="spacer col-4 mx-3"></div>
 </div>
 

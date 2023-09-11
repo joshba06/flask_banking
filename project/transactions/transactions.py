@@ -1,20 +1,15 @@
 # Flask
 from flask import (
-    Blueprint, redirect, render_template, request, url_for, jsonify, abort
+    Blueprint, redirect, url_for, jsonify, abort
 )
 
 # Forms
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, DecimalField, DateField, SelectField
+from wtforms import StringField, SubmitField, DecimalField, SelectField
 from wtforms.validators import DataRequired
 
-# Graphs
-import plotly
-import plotly.graph_objects as go
-import json
-
 # Basics
-from datetime import datetime, date
+from datetime import datetime
 from pprint import pprint
 
 # Models

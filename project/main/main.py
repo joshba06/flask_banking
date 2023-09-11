@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, render_template
+    Blueprint, redirect, url_for
 )
 
 main_bp = Blueprint('main', __name__,
@@ -7,6 +7,6 @@ main_bp = Blueprint('main', __name__,
                static_folder='../static',
                static_url_path='assets')
 
-# @main_bp.route("/", methods=['GET'])
-# def home():
-#     return render_template('main/home.html')
+@main_bp.route("/", methods=['GET'])
+def home():
+    return redirect(url_for("accounts.index"))

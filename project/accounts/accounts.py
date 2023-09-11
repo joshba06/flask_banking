@@ -1,16 +1,15 @@
 # Flask
 from flask import (
-    Blueprint, redirect, render_template, request, url_for, jsonify, abort
+    Blueprint, redirect, render_template, request, url_for
 )
 from datetime import datetime, timedelta
 
 # Basics
 from pprint import pprint
-import random
 
 # Forms
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, DecimalField, DateField, SelectField, BooleanField
+from wtforms import StringField, SubmitField, DateField, SelectField, BooleanField
 from wtforms.validators import DataRequired
 
 
@@ -21,14 +20,11 @@ from project.db import db_session
 # Forms
 from project.transactions.transactions import TransactionForm, SubaccountTransferForm
 
-
 # Define the name of this blueprint and which url its reached under. This has to be registered in create_app()
 accounts_bp = Blueprint('accounts', __name__,
                template_folder='templates',
                static_folder='../static',
                static_url_path='assets')
-
-
 
 class FilterForm(FlaskForm):
     search_type = SelectField('Search type', choices = ["Matches", "Includes"])
@@ -51,20 +47,24 @@ class DeleteAccountForm(FlaskForm):
     delete = SubmitField("Delete")
 
 
+@accounts_bp.route("/accounts", methods=["GET"])
+def index():
+    # By default, forward to show page of any account
+    return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
+
 @accounts_bp.route("/accounts/<int:account_id>", methods=["GET", "POST"])
-def show(account_id):
+def show(account_id, transactions_filter=None):
 
     account = Account.query.get(account_id)
     all_accounts = Account.query.all()
+    transactions_filter = request.args.get('transactions_filter')
 
-    default_transactions_filter = True
-
-    # Transactions filter. By default, show only transactions belonging to current account
+    # Transactions filter
     filter_form = FilterForm()
     if request.method == 'POST' and filter_form.clear.data:
-        return redirect(url_for("accounts.show", account_id=account_id))
+        print("Redirecting to accounts.show with default transactions filter cleared")
+        return redirect(url_for("accounts.show", account_id=account_id, transactions_filter="cleared"))
     elif request.method == 'POST' and filter_form.submit.data:
-        default_transactions_filter = False
         category = None if filter_form.category.data == "-Category-" else filter_form.category.data
         transactions = Transaction.read_all(account_id=account_id,
                                             start_date = filter_form.start_date.data,
@@ -73,8 +73,15 @@ def show(account_id):
                                             search_type=filter_form.search_type.data,
                                             transaction_description=filter_form.transaction_description.data)
     else:
-        date_30_days_ago = (datetime.today() - timedelta(days=30)).date()
-        transactions = Transaction.read_all(start_date=date_30_days_ago, account_id=account_id)
+        if transactions_filter=="cleared":
+            print("Displaying ALL transactions")
+            transactions = Transaction.read_all(account_id=account_id)
+        else:
+            transactions_filter="default_30_days"
+            print("Displaying default filter: Last 30 days")
+            date_30_days_ago = (datetime.today() - timedelta(days=30)).date()
+            filter_form.start_date.data = date_30_days_ago
+            transactions = Transaction.read_all(start_date=date_30_days_ago, account_id=account_id)
 
 
     # Extract data for transaction statistics
@@ -145,10 +152,9 @@ def show(account_id):
                         account_form=account_form,
                         edit_account_form=edit_account_form,
                         delete_account_form=delete_account_form,
-                        default_transactions_filter=default_transactions_filter,
+                        transactions_filter=transactions_filter,
                         transaction_statistics=transaction_statistics
                         )
-
 
 @accounts_bp.route("/accounts/create", methods=["POST"])
 def create():
@@ -181,7 +187,6 @@ def create():
     except:
         print("Something went wrong")
         return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
-
 
 @accounts_bp.route("/accounts/<int:account_id>/update", methods=["POST"])
 def update(account_id):

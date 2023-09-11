@@ -101,7 +101,7 @@ class Transaction(Base):
         if category not in [None, "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
             raise ValueError("Invalid category value.")
 
-        print(f"[Filter] account_id: {account_id}, start: {start_date}, end: {end_date}, search type: {search_type}, description: {transaction_description}, category: {category}")
+        # print(f"[Filter] account_id: {account_id}, start: {start_date}, end: {end_date}, search type: {search_type}, description: {transaction_description}, category: {category}")
 
         # Query database for description & account id
         if transaction_description != None and transaction_description != "":

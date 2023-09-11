@@ -3,14 +3,16 @@
   <head>
     {% block head %}
       <meta charset="UTF-8">
-      <title>{% block title %}{% endblock %}</title>
+      <title>
+        {% block title %}
+        {% endblock %}
+      </title>
       <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
       <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
       <!-- Javascript for autocomplete -->
       <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/ui-lightness/jquery-ui.css" rel="stylesheet" type="text/css" />
 
-      {{ fontawesome_html() }}
     {% endblock %}
   </head>
   <body>
