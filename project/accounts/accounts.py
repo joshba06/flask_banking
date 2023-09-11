@@ -88,7 +88,7 @@ def show(account_id, transactions_filter=None):
     transaction_statistics = {}
     transaction_statistics['income'] = sum([transaction.amount for transaction in transactions if transaction.amount > 0])
     transaction_statistics['expenses'] = sum([transaction.amount for transaction in transactions if transaction.amount < 0])
-
+    transaction_statistics['num_transactions'] = len(transactions)
 
     # Extract unique transaction descriptions for display in autocomplete field
     autocomplete_descriptions = list(set([transaction.description for transaction in transactions]))

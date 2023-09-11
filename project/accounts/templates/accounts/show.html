@@ -154,22 +154,32 @@ Joshba06 Banking
         </tr>
       </thead>
       <tbody>
-        {% for transaction in transactions %}
-          <tr>
-            <td>{{ transaction.date_booked.strftime("%d/%m/%y") }}</td>
-            <td>{{ transaction.description }}</td>
-            <td>{{ transaction.category }}</td>
-            <td class="text-right">{{ format_currency(transaction.amount) }} €</td>
-            <td class="text-right">{{ format_currency(transaction.saldo) }} €</td>
-          </tr>
-        {% endfor%}
+        {% if transaction_statistics['num_transactions'] == 0 %}
         <tr>
           <td></td>
           <td></td>
+          <td>No transactions found</td>
           <td></td>
-          <td class="text-right" style="font-weight: bold">Sum: {{ format_currency(transactions_table_sum) }} €</td>
           <td></td>
         </tr>
+        {% else %}
+          {% for transaction in transactions %}
+            <tr>
+              <td>{{ transaction.date_booked.strftime("%d/%m/%y") }}</td>
+              <td>{{ transaction.description }}</td>
+              <td>{{ transaction.category }}</td>
+              <td class="text-right">{{ format_currency(transaction.amount) }} €</td>
+              <td class="text-right">{{ format_currency(transaction.saldo) }} €</td>
+            </tr>
+          {% endfor%}
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class="text-right" style="font-weight: bold">Sum: {{ format_currency(transactions_table_sum) }} €</td>
+            <td></td>
+          </tr>
+        {% endif %}
       </tbody>
     </table>
 
