@@ -1,7 +1,12 @@
 # Flask
 from flask import (
-    Blueprint, redirect, url_for, jsonify, abort
+    Blueprint, redirect, url_for, jsonify, abort, request
 )
+
+# CSV download
+import csv
+from io import StringIO
+from werkzeug.wrappers import Response
 
 # Forms
 from flask_wtf import FlaskForm
@@ -258,6 +263,48 @@ def create_subaccount_transfer(sender_account_id):
             print("Something went wrong")
 
 
+@transactions_bp.route('/download_csv', methods=['POST'])
+def download_csv():
+    try:
+        account = Account.query.get(request.form.get('account_id'))
+        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date() if request.form.get('start_date') != "None" else None
+        end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date() if request.form.get('end_date') != "None" else None
+        transaction_description = request.form.get('transaction_description') if request.form.get('transaction_description') != "None" else None
+        search_type = request.form.get('search_type') if request.form.get('search_type') != "None" else None
+
+        # Query transactions, just like in index route
+        transactions = Transaction.read_all(account_id=account.id,
+                                            start_date = start_date,
+                                            end_date=end_date,
+                                            search_type=search_type,
+                                            transaction_description=transaction_description)
+
+        def generate():
+            data = StringIO()
+            writer = csv.writer(data)
+
+            writer.writerow(("Account_iban", "Date", "Description", "Category", "Amount", "Saldo"))
+            yield data.getvalue()
+            data.seek(0)
+            data.truncate(0)
+
+            for transaction in transactions:
+                writer.writerow((
+                    transaction.account.iban,
+                    transaction.date_booked.strftime("%d/%m/%Y"),
+                    transaction.description,
+                    f"{transaction.amount}€",
+                    f"{transaction.saldo}€"
+                ))
+                yield data.getvalue()
+                data.seek(0)
+                data.truncate(0)
+
+        response = Response(generate(), mimetype='text/csv')
+        response.headers.set("Content-Disposition", "attachment", filename="data.csv")
+        return response
+    except:
+        return redirect(url_for("accounts.show", account_id=1))
 
 
 

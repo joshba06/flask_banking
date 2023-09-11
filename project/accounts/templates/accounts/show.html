@@ -72,7 +72,15 @@ Joshba06 Banking
   <div class="activities-actions">
     <div class="btn-group" role="group"">
       <button type="button" id="show-new-transaction-field" class="btn btn-sm btn-primary" style="margin-right:2px;"><img src="{{url_for('static', filename='images/new-transfer.svg')}}" class="custom-icon icon-white mr-1">Transfer</button>
-      <button type="button" class="btn btn-sm btn-primary"><img src="{{url_for('static', filename='images/download-solid.svg')}}" class="custom-icon icon-white mr-1">Export</button>
+
+      <form action="{{ url_for('transactions.download_csv') }}" method="POST">
+        <input type="hidden" name="account_id" value="{{ active_account_id }}">
+        <input type="hidden" name="start_date" value="{{ filter_form.start_date.data }}">
+        <input type="hidden" name="end_date" value="{{ filter_form.end_date.data }}">
+        <input type="hidden" name="transaction_description" value="{{ filter_form.transaction_description.data }}">
+        <input type="hidden" name="search_type" value="{{ filter_form.search_type.data }}">
+        <button type="submit" class="btn btn-sm btn-primary"><img src="{{url_for('static', filename='images/download-solid.svg')}}" class="custom-icon icon-white mr-1">Export</button>
+      </form>
     </div>
   </div>
 </div>
