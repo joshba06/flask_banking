@@ -14,7 +14,7 @@ from wtforms.validators import DataRequired
 
 
 # Models
-from project.models import Account, Transaction
+from project.models import Account, Transaction, AccountLimitException
 from project.db import db_session
 
 # Forms
@@ -49,12 +49,12 @@ class DeleteAccountForm(FlaskForm):
 
 @accounts_bp.route("/accounts", methods=["GET"])
 def index():
+    print("I am here")
     # By default, forward to show page of any account
     return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
 
 @accounts_bp.route("/accounts/<int:account_id>", methods=["GET", "POST"])
 def show(account_id, transactions_filter=None):
-
     account = Account.query.get(account_id)
     all_accounts = Account.query.all()
     transactions_filter = request.args.get('transactions_filter')
@@ -62,7 +62,7 @@ def show(account_id, transactions_filter=None):
     # Transactions filter
     filter_form = FilterForm()
     if request.method == 'POST' and filter_form.clear.data:
-        print("Redirecting to accounts.show with default transactions filter cleared")
+        # print("Redirecting to accounts.show with default transactions filter cleared")
         return redirect(url_for("accounts.show", account_id=account_id, transactions_filter="cleared"))
     elif request.method == 'POST' and filter_form.submit.data:
         category = None if filter_form.category.data == "-Category-" else filter_form.category.data
@@ -74,11 +74,11 @@ def show(account_id, transactions_filter=None):
                                             transaction_description=filter_form.transaction_description.data)
     else:
         if transactions_filter=="cleared":
-            print("Displaying ALL transactions")
+            # print("Displaying ALL transactions")
             transactions = Transaction.read_all(account_id=account_id)
         else:
             transactions_filter="default_30_days"
-            print("Displaying default filter: Last 30 days")
+            # print("Displaying default filter: Last 30 days")
             date_30_days_ago = (datetime.today() - timedelta(days=30)).date()
             filter_form.start_date.data = date_30_days_ago
             transactions = Transaction.read_all(start_date=date_30_days_ago, account_id=account_id)
@@ -162,7 +162,7 @@ def create():
     account_form = AccountForm()
 
     # Create new iban
-    iban = "GB29000060161331926819"
+    iban = "GB29000060161331920000"
     all_ibans = [account.iban for account in Account.query.all()]
     iban_invalid = True
     increment = 1
@@ -178,33 +178,48 @@ def create():
         else:
             increment += 1
 
-    new_account = Account(iban=new_iban, title=account_form.title.data)
     try:
+        new_account = Account(iban=new_iban, title=account_form.title.data)
         db_session.add(new_account)
         db_session.commit()
         print(f"Successfully created new account: {new_account}")
         flash('Successfully created new account.', "success")
         return redirect(url_for("accounts.show", account_id=new_account.id))
-    except:
-        print("Something went wrong")
-        flash('Something went wrong while creating new account', "error")
-        return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
+    except ValueError as ve:
+        db_session.rollback()
+        print(f"Error: {ve}")
+        flash('Account title must be a string and max length of 15 characters.', "error")
+        return redirect(url_for("accounts.index"))
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while creating new account: {e}")
+
+        return redirect(url_for("accounts.index"))
 
 @accounts_bp.route("/accounts/<int:account_id>/update", methods=["POST"])
 def update(account_id):
-
     edit_account_form = AccountForm()
 
     account = Account.query.get(account_id)
-    account.title = edit_account_form.title.data
 
-    try:
-        db_session.add(account)
-        db_session.commit()
-        flash('Successfully updated account info.', "success")
-    except:
-        print("Something went wrong")
-        flash('Something went wrong while updating account info', "error")
+    if not account:  # Edge case: Account does not exist.
+        print(f"Could not find account with id {account_id}")
+        flash('Account not found.', "error")
+        return redirect(url_for("accounts.index"))
+
+    account_title = edit_account_form.title.data
+    if len(account_title) > 15:
+        flash('Account title must be a string and max length of 15 characters.', "error")
+    else:
+        try:
+            account.title = account_title
+            db_session.add(account)
+            db_session.commit()
+            flash('Successfully updated account info.', "success")
+        except Exception as e:
+            db_session.rollback()
+            print(f"Something went wrong while updating account info: {e}")
+            flash('Something went wrong while updating account info.', "error")
 
     return redirect(url_for("accounts.show", account_id=account_id))
 
@@ -212,12 +227,22 @@ def update(account_id):
 def delete(account_id):
 
     try:
-        Account.query.filter_by(id=account_id).delete()
+        account_to_delete = db_session.query(Account).filter(Account.id == account_id).first()
+        if not account_to_delete:
+            flash("Could not find account.", "error")
+            return redirect(url_for("accounts.show", account_id=db_session.query(Account).first().id))
+
+        account_count = db_session.query(Account).count()
+        if account_count <= 1:
+            flash("Cannot delete the last account.", "error")
+
+        db_session.delete(account_to_delete)
         db_session.commit()
-        print("Deleted account")
         flash('Successfully deleted account.', "success")
         return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
-    except:
-        print("Something went wrong")
+
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while deleting account: {e}")
         flash('Something went wrong while deleting account', "error")
         return redirect(url_for("accounts.show", account_id=account_id))

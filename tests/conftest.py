@@ -1,6 +1,8 @@
 import pytest
 from project import create_app
 
+
+
 @pytest.fixture()
 def app_initialiser():
     app = create_app(test_setup=True)
@@ -19,6 +21,9 @@ def app_initialiser():
 
     yield app, Account, Transaction, db_session
 
+def pytest_runtest_call(item):
+    print(f"\n[{item.name}]")
+    
 
 @pytest.fixture()
 def client_initialiser(app_initialiser):

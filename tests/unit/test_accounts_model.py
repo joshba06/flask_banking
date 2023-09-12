@@ -20,6 +20,11 @@ def test_invalid_title_type(db_initialiser):
     with pytest.raises(ValueError, match="'title' should be of type 'str'."):
         Account(title=12345, iban="DE1234567890123456")
 
+def test_invalid_title_length(db_initialiser):
+    Account, _, db_session = db_initialiser
+    with pytest.raises(ValueError, match="'title' cannot exceed 15 characters."):
+        Account(title="Hello12345678911", iban="DE1234567890123456")
+
 def test_invalid_iban_type(db_initialiser):
     Account, _, db_session = db_initialiser
 
@@ -69,3 +74,30 @@ def test_duplicate_title(db_initialiser):
     ibans = {account.iban for account in accounts}
     assert "DE1234567890123456" in ibans
     assert "DE6543210987654321" in ibans
+
+def test_limit_accounts_within_limit(db_initialiser):
+    Account, _, db_session = db_initialiser
+
+    for _ in range(4):
+        db_session.add(Account(f"Account{_}", f"IBAN{_}"))
+    db_session.commit()
+
+    assert Account.query.count() == 4
+
+def test_limit_accounts_at_limit(db_initialiser):
+    Account, _, db_session = db_initialiser
+    for _ in range(5):
+        db_session.add(Account(f"Account{_}", f"IBAN{_}"))
+    db_session.commit()
+    assert Account.query.count() == 5
+
+def test_limit_accounts_exceed_limit(db_initialiser):
+    Account, _, db_session = db_initialiser
+    from project.models import AccountLimitException
+
+    for _ in range(5):
+        db_session.add(Account(f"Account{_}", f"IBAN{_}"))
+    db_session.commit()
+    with pytest.raises(AccountLimitException):
+        db_session.add( Account(title="Jane's Savings", iban="DE1234567890123456"))
+        db_session.commit()

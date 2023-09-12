@@ -2,6 +2,7 @@
 from flask import (
     Blueprint, redirect, url_for, jsonify, abort, request, flash
 )
+from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
 
 # CSV download
 import csv
@@ -32,7 +33,7 @@ transactions_bp = Blueprint('transactions', __name__,
 # Define forms to be used in all controllers
 class TransactionForm(FlaskForm):
     description = StringField("Transaction description", validators=[DataRequired()], render_kw={"placeholder": "Reference"})
-    category = SelectField("Category", choices = ["Category", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"])
+    category = SelectField("Category", choices = ["Category", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"], validators=[DataRequired()])
     amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
     submit = SubmitField("Add")
 
@@ -41,187 +42,25 @@ class SubaccountTransferForm(FlaskForm):
     choices = ["Recipient"]
     for account in Account.query.all():
         choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})")
-    recipient = SelectField("Recipient", choices = choices, render_kw={"placeholder": "Recipient"})
+    recipient = SelectField("Recipient", choices = choices, validators=[DataRequired()], render_kw={"placeholder": "Recipient"})
     amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
     submit = SubmitField("Add")
 
-
-
-## App routes
-# @transactions_bp.route("/", methods=["GET", "POST"])
-# def index():
-
-#     # Transactions filter
-#     filter_form = FilterForm()
-#     if request.method == 'POST' and filter_form.clear.data:
-#         return redirect(url_for("transactions.index"))
-#     elif request.method == 'POST' and filter_form.submit.data:
-#         category = None if filter_form.category.data == "-Category-" else filter_form.category.data
-#         transactions = Transaction.read_all(start_date = filter_form.start_date.data,
-#                                              end_date=filter_form.end_date.data,
-#                                              category=category,
-#                                              search_type=filter_form.search_type.data,
-#                                              transaction_description=filter_form.transaction_description.data)
-#         grouped_transactions = Transaction.group_by_month(transactions)
-#     else:
-#         transactions = Transaction.read_all()
-#         grouped_transactions = Transaction.group_by_month(transactions)
-
-#     # New transaction
-#     transaction_form = TransactionForm()
-#     if transaction_form.validate_on_submit():
-#         new_transaction = Transaction(transaction_form.description.data, transaction_form.amount.data, transaction_form.category.data)
-#         try:
-#             db_session.add(new_transaction)
-#             db_session.commit()
-#             new_transaction.calculate_saldo()
-#             return redirect(url_for("transactions.index"))
-#         except:
-#             print("Something went wrong")
-
-
-#     transactions_sum = 0
-#     descriptions = []
-#     for transaction in transactions:
-#         descriptions.append(transaction.description)
-#         transactions_sum += transaction.amount
-#     unique_descriptions = list(set(descriptions))
-
-#     ## Display graphs
-#     # Prepare data for charts
-#     data_y = []
-#     data_pos = []
-#     data_neg = []
-#     data_sum = []
-#     if len(transactions) > 0:
-#         first_date = date(min(grouped_transactions.keys()), min(grouped_transactions[min(grouped_transactions.keys())].keys()), 1)
-#         last_date = date(max(grouped_transactions.keys()), max(grouped_transactions[max(grouped_transactions.keys())].keys()), 1)
-#         current_date = first_date
-
-#         while current_date <= last_date:
-#             if current_date.month < 10:
-#                 data_y.append("0{}/{}".format(current_date.month, current_date.year))
-#             else:
-#                 data_y.append("{}/{}".format(current_date.month, current_date.year))
-
-#             if current_date.year in grouped_transactions.keys():
-#                 if current_date.month in grouped_transactions[current_date.year].keys():
-#                     data_pos.append(grouped_transactions[current_date.year][current_date.month]['income'])
-#                     data_neg.append(abs(grouped_transactions[current_date.year][current_date.month]['expenses']))
-#                     data_sum.append(grouped_transactions[current_date.year][current_date.month]['total'])
-#                 else:
-#                     data_pos.append(0)
-#                     data_neg.append(0)
-#                     data_sum.append(0)
-#             else:
-#                 for i in range(12):
-#                     data_pos.append(0)
-#                     data_neg.append(0)
-#                     data_sum.append(0)
-
-#             if current_date.month == 12:
-#                 current_date = date(current_date.year + 1, 1, 1)
-#             else:
-#                 current_date = date(current_date.year, current_date.month + 1, 1)
-#     else:
-#         data_y.append("None")
-#         data_pos.append(0)
-#         data_neg.append(0)
-#         data_sum.append(0)
-
-#     # Donut chart - only expenses
-#     expenses_per_category = {
-#         "Salary": 0,
-#         "Rent": 0,
-#         "Utilities": 0,
-#         "Groceries": 0,
-#         "Night out": 0,
-#         "Online services": 0
-#     }
-#     for transaction in transactions:
-#         if transaction.amount < 0:
-#             expenses_per_category[transaction.category] += transaction.amount
-
-#     colors = ["#321D70", "#25528F", "#5083C1", "#7CA6D7", "#A6C4E5", "#CCD9F5"]
-
-#     if len(transactions) == 0:
-#         values = [0, 0, 0, 0, 0, 0]
-#         labels = list(expenses_per_category.keys())
-#     else:
-#         labels = []
-#         values = []
-#         for key, val in expenses_per_category.items():
-#             labels.append(key)
-#             values.append(float(-1*val))
-
-#     fig_donut = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7)])
-#     fig_donut.update_traces(hoverinfo='label+value',
-#                             textinfo='none',
-#                             marker=dict(colors=colors, line=dict(color='#000000', width=2))
-#                             )
-#     fig_donut.update_layout(
-#             paper_bgcolor='rgba(0,0,0,0)',
-#             plot_bgcolor='rgba(0,0,0,0)',
-#             margin=dict(t=0, b=0, l=1, r=0),
-#             legend=dict(
-#                 y=0.5,
-#             )
-#         )
-#     if len(transactions) == 0:
-#         fig_donut.update_layout(annotations=[dict(text='No results', x=0.5, y=0.5, font_size=16, showarrow=False)])
-#     else:
-#         fig_donut.update_layout(annotations=[dict(text='Expenses', x=0.5, y=0.5, font_size=16, showarrow=False)])
-
-#     graphJSON_donut = json.dumps(fig_donut, cls=plotly.utils.PlotlyJSONEncoder)
-
-#     # Bar chart
-#     fig_bar = go.Figure()
-#     fig_bar.add_trace(go.Bar(x=data_y,
-#                     y=data_pos,
-#                     name='Income',
-#                     marker_color='#38485E'
-#                     ))
-#     fig_bar.add_trace(go.Bar(x=data_y,
-#                     y=data_neg,
-#                     name='Expenses',
-#                     marker_color='#E36E39'
-#                     ))
-
-#     fig_bar.update_layout(
-#         xaxis_tickfont_size=14,
-#         yaxis=dict(
-#             title='Amount',
-#             # titlefont_size=16,
-#             # tickfont_size=14,
-#         ),
-#         margin=dict(r=0),
-#         paper_bgcolor='rgba(0,0,0,0)',
-#         plot_bgcolor='rgba(0,0,0,0)',
-#         showlegend=False,
-#         barmode='group',
-#         bargap=0.15, # gap between bars of adjacent location coordinates.
-#         bargroupgap=0.1 # gap between bars of the same location coordinate.
-#     )
-
-#     graphJSON_bar = json.dumps(fig_bar, cls=plotly.utils.PlotlyJSONEncoder)
-
-#     return render_template('transactions/index.html',
-#                             unique_descriptions=unique_descriptions,
-#                             transactions=transactions,
-#                             template_form=transaction_form,
-#                             filter_form=filter_form,
-#                             graphJSON_bar=graphJSON_bar,
-#                             graphJSON_donut=graphJSON_donut,
-#                             transactions_sum=transactions_sum)
 
 @transactions_bp.route("/accounts/<int:account_id>/transactions/create", methods=["POST"])
 def create(account_id):
 
     account = Account.query.get(account_id)
+    if not account:
+        print(f"Cannot find account with id {account_id}")
+        flash('Account not found.', "error")
+        return redirect(url_for("accounts.index"))
 
     transaction_form = TransactionForm()
 
+    # POST request was made and all TransactionForm fields have valid input
     if transaction_form.validate_on_submit():
+        print("I am inside the TRANSACTION form")
         new_transaction = Transaction(transaction_form.description.data, transaction_form.amount.data, transaction_form.category.data)
         try:
             account.transactions.append(new_transaction)
@@ -231,24 +70,55 @@ def create(account_id):
             print(f"Added new transaction: {new_transaction}")
             flash('Successfully created new transaction.', "success")
             return redirect(url_for("accounts.show", account_id=account_id))
-        except:
-            print("Something went wrong")
-            flash('Successfully went wrong while creating new transaction.', "error")
+        except Exception as e:
+            db_session.rollback()
+            print(f"Something went wrong while creating new transaction: {e}")
+            flash('Something went wrong while creating new transaction.', "error")
+
+    # Request is not POST or form fields have invalid input
+    else:
+        flash('Invalid form submission.', "error")
+        return redirect(url_for("accounts.show", account_id=account_id))
 
 @transactions_bp.route("/accounts/<int:sender_account_id>/transactions/create_subaccount_transfer", methods=["POST"])
 def create_subaccount_transfer(sender_account_id):
 
-    subaccount_transfer_form = SubaccountTransferForm()
-
     sender_account = Account.query.get(sender_account_id)
+    if not sender_account: # If sender account cannot be found, forward to index page
+        flash("Could not find sender account.", "error")
+        return redirect(url_for("accounts.index"))
 
+    subaccount_transfer_form = SubaccountTransferForm()
     recipient_account_title = subaccount_transfer_form.recipient.data.split("(")[0].strip()
     recipient_account_fractional_iban = subaccount_transfer_form.recipient.data.split("(")[1].strip()
     recipient_account_fractional_iban = recipient_account_fractional_iban.split(")")[0].strip()
 
-    recipient_account = Account.query.filter(Account.title==recipient_account_title, Account.iban.like(f"{recipient_account_fractional_iban[:4]}%"), Account.iban.like(f"%{recipient_account_fractional_iban[-2:]}")).one()
+    try:
+        recipient_account = Account.query.filter(
+            Account.title == recipient_account_title,
+            Account.iban.like(f"{recipient_account_fractional_iban[:4]}%"),
+            Account.iban.like(f"%{recipient_account_fractional_iban[-2:]}")
+        ).one()
+    except NoResultFound:
+        print('Recipient account not found.')
+        flash('Recipient account not found.', "error")
+        return redirect(url_for("accounts.show", account_id=sender_account_id))
 
+    print("Outside form")
+    # POST request was made and form field have valid input
     if subaccount_transfer_form.validate_on_submit():
+        print("I am inside the form")
+        transfer_amount = subaccount_transfer_form.amount.data
+
+        if transfer_amount <= 0:
+            flash('Invalid transfer amount.', 'error')
+            return redirect(url_for("accounts.show", account_id=sender_account_id))
+
+        if sender_account.saldo < transfer_amount:
+            flash('Insufficient funds.', 'error')
+            return redirect(url_for("accounts.show", account_id=sender_account_id))
+
+
         sender_transaction = Transaction(subaccount_transfer_form.description.data, -subaccount_transfer_form.amount.data, "Transfer")
         sender_account.transactions.append(sender_transaction)
 
@@ -262,10 +132,14 @@ def create_subaccount_transfer(sender_account_id):
             recipient_transaction.calculate_saldo()
             flash('Successfully created new transfer.', "success")
             return redirect(url_for("accounts.show", account_id=sender_account_id))
-        except:
-            print("Something went wrong")
-            flash('Successfully went wrong while creating new transfer.', "error")
+        except Exception as e:
+            print(f"Something went wrong while creating new transfer: {e}")
+            flash('Something went wrong while creating new transfer.', "error")
+            db_session.rollback()
 
+    else:
+        flash('Invalid form submission.', "error")
+        return redirect(url_for("accounts.show", account_id=sender_account_id))
 
 @transactions_bp.route('/download_csv', methods=['POST'])
 def download_csv():

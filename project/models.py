@@ -3,20 +3,28 @@ from sqlalchemy import desc, func
 import decimal
 from pprint import pprint
 
+from sqlalchemy import event
+from sqlalchemy.orm import mapper
+
 from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from project.db import Base, db_session
 
+class AccountLimitException(Exception):
+    pass
+
 class Account(Base):
     __tablename__ = "accounts"
     id = Column(Integer, primary_key = True)
-    title = Column(String(100), index = True)
+    title = Column(String(15), index = True)
     iban = Column(String(100), index = True, unique = True)
-    transactions = relationship('Transaction', backref='account', lazy="dynamic")
+    transactions = relationship('Transaction', backref='account', lazy="dynamic", cascade="all, delete-orphan")
 
     def __init__(self, title, iban):
         if not isinstance(title, str):
             raise ValueError(f"'title' should be of type 'str'.")
+        elif len(title) > 15:
+            raise ValueError(f"'title' cannot exceed 15 characters.")
         if not isinstance(iban, str):
             raise ValueError(f"'iban' should be of type 'str'.")
 
@@ -24,7 +32,14 @@ class Account(Base):
         self.iban = iban
 
     def __repr__(self):
-        return f"Account with iban: {self.iban}"
+        return f"[Account] iban: {self.iban}, title: {self.title}"
+
+def limit_accounts(mapper, connection, target):
+    accounts_count = db_session.query(Account).count()
+    if accounts_count >= 5:
+        raise AccountLimitException("Cannot add more than 5 accounts.")
+
+event.listen(Account, 'before_insert', limit_accounts)
 
 class Transaction(Base):
 

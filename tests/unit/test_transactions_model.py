@@ -3,14 +3,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from pprint import pprint
 
-# New tests
+# New tests to be added
 # Group my month tests are needed if the function will remain.
-
-# Functional
-# Include transfer can only be made to other account, not same account
-# Subaccount transfer
-# Standard paypment
-
 
 ## Model initialisation tests (no db commit so account association isnt tested here)
 def test_starts_with_empty_database(model_initialiser):

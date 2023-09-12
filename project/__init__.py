@@ -23,6 +23,7 @@ def create_app(test_setup=False):
         print("__________[APP] TEST SETUP__________")
         app.config.update({
             "TESTING": True,
+            'WTF_CSRF_ENABLED': False
         })
     init_db()
 
