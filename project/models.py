@@ -29,7 +29,7 @@ class Account(Base):
 
     def __init__(self, title, iban):
         if (not isinstance(title, str)) or (title[0] in "0123456789"):
-            raise ValueError(f"title should be of type str.")
+            raise ValueError(f"title should be of type str and cannot start with digit")
         elif not (3 <= len(title) <= 15):  # Check if title length is between 3 and 15 characters
             raise ValueError(f"title must be between 3 to 15 characters long.")
 

@@ -44,6 +44,10 @@ def test_create_account_error_flash(client_initialiser, account_initialiser, fir
         {
             "title": "Abcde"*5,  # too long
             "error_message": "title must be between 3 to 15 characters long."
+        },
+        {
+            "title": "123Hello",  # starts with digit
+            "error_message": "title should be of type str and cannot start with digit"
         }
     ]
 
@@ -126,6 +130,11 @@ def test_api_create_account_invalid_title_type(client_initialiser):
 
     assert "is not of type 'string' - 'title" in response.json["detail"]
 
+    response = client.post("/api/accounts", json={"title": "12345"})
+
+    assert response.status_code == 400
+    assert "title should be of type str and cannot start with digit" in response.json["detail"]
+
 def test_api_create_account_short_title(client_initialiser):
     client = client_initialiser
     response = client.post("/api/accounts", json={"title": "ab"})
@@ -161,7 +170,7 @@ def test_api_create_accounts_success(client_initialiser, account_initialiser):
         # Ensure 5 accounts can be created successfully
         assert response.status_code == 201
         assert response.json['status'] == "success"
-        assert response.json['message'] == "Successfully created new account."
+        assert response.json['detail'] == "Successfully created new account."
         assert response.json['title'] == f"Test_{i}"
         assert response.json['iban'] == f"GB2900006016133192000{i}"
         assert response.json['id'] == i+1
@@ -185,7 +194,7 @@ def test_api_create_accounts_exceed_limit(client_initialiser, account_initialise
 
     # Ensure custom message, raised by Acount limit_accounts function, is returned
     assert response.json['status'] == "error"
-    assert response.json['message'] == "Cannot add more than 5 accounts."
+    assert response.json['detail'] == "Cannot add more than 5 accounts."
 
 
 

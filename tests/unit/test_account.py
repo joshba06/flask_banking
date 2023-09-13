@@ -1,6 +1,5 @@
 import pytest
 from pprint import pprint
-from sqlalchemy.exc import IntegrityError
 
 ## Model tests (test the __init__ method)
 def test_valid_account_creation(account_initialiser):
