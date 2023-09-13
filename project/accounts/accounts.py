@@ -43,11 +43,13 @@ class AccountForm(FlaskForm):
                             Length(min=3, max=15)
                             # Further validation for string done in JS, because impossible if not using .is_validated()
                             ])
-    iban = SelectField("Iban", choices = ["Coming soon..."], render_kw = {'disabled': 'disabled'})
-    icon = SelectField("Icon", choices = ["Coming soon..."], render_kw = {'disabled': 'disabled'})
     accept_terms = BooleanField("Terms", validators=[DataRequired()])
     submit = SubmitField("Create")
     delete = SubmitField("Delete")
+
+class EditAccountForm(AccountForm):
+    # Overriding the accept_terms field to make it not required
+    accept_terms = BooleanField("Terms")
 
 class DeleteAccountForm(FlaskForm):
     delete = SubmitField("Delete")
@@ -139,7 +141,7 @@ def show(account_id, transactions_filter=None):
 
     # Create new account / edit account details form
     account_form = AccountForm()
-    edit_account_form = AccountForm(obj=Account.query.get(account_id))
+    edit_account_form = EditAccountForm(obj=Account.query.get(account_id))
     delete_account_form = DeleteAccountForm()
 
     return render_template('accounts/show.html',
@@ -162,9 +164,14 @@ def show(account_id, transactions_filter=None):
 
 @accounts_bp.route("/accounts/create", methods=["POST"])
 def create():
+
     account_form = AccountForm()
-    new_iban = generate_unique_iban()
-    status, message = create_account(new_iban, account_form.title.data)
+    if not account_form.validate(): # Validates title length, title str type, checkbox
+        message = 'Form data is not valid.'
+        status = "error"
+    else:
+        new_iban = generate_unique_iban()
+        status, message = create_account(new_iban, account_form.title.data) # Validates title doesnt't start with digit
 
     flash(message, status)
 
@@ -221,30 +228,41 @@ def create_account(iban, title):
 
 @accounts_bp.route("/accounts/<int:account_id>/update", methods=["POST"])
 def update(account_id):
-    edit_account_form = AccountForm()
+
+    edit_account_form = EditAccountForm()
+
+    if not edit_account_form.validate(): # Validates title length, title str type
+        flash('Form data is not valid.', "error")
+        return redirect(url_for("accounts.show", account_id=account_id))
 
     account = Account.query.get(account_id)
-
     if not account:  # Edge case: Account does not exist.
         print(f"Could not find account with id {account_id}")
         flash('Account not found.', "error")
         return redirect(url_for("accounts.index"))
 
     account_title = edit_account_form.title.data
-    if len(account_title) > 15:
-        flash('Account title must be a string and max length of 15 characters.', "error")
-    else:
-        try:
-            account.title = account_title
-            db_session.add(account)
-            db_session.commit()
-            flash('Successfully updated account info.', "success")
-        except Exception as e:
-            db_session.rollback()
-            print(f"Something went wrong while updating account info: {e}")
-            flash('Something went wrong while updating account info.', "error")
+
+    # Validations (only title first char, because isnt part of form validation)
+    try:
+        if account_title[0] in "0123456789":
+            flash('Account title cannot start with a digit.', "error")
+            return redirect(url_for("accounts.show", account_id=account_id))
+
+        # Update Account
+        account.title = account_title
+        db_session.add(account)
+        db_session.commit()
+        flash('Successfully updated account info.', "success")
+
+    except Exception as e:
+        db_session.rollback()
+        print(f"Something went wrong while updating account info: {e}")
+        flash('Something went wrong while updating account info. Please try again.', "error")
 
     return redirect(url_for("accounts.show", account_id=account_id))
+
+
 
 @accounts_bp.route("/accounts/<int:account_id>/delete", methods=["POST"])
 def delete(account_id):

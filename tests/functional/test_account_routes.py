@@ -2,11 +2,15 @@ import pytest
 
 @pytest.fixture()
 def first_account(client_initialiser, account_initialiser):
-    assert account_initialiser.query.count() == 0
+    Account = account_initialiser
+    assert Account.query.count() == 0
 
     # Create first account (database must have at least 1 account)
-    client_initialiser.post("/accounts/create", data={"title": "first_account"}, follow_redirects=True)
-    assert account_initialiser.query.count() == 1
+    client_initialiser.post("/accounts/create", data={"title": "first_account", "accept_terms": True}, follow_redirects=True)
+    assert Account.query.count() == 1
+
+    account = Account.query.filter(Account.title=="first_account").first()
+    return account
 
 ## Route tests
 # create route
@@ -14,7 +18,7 @@ def test_create_success_redirect(client_initialiser, account_initialiser, first_
     Account = account_initialiser
     client = client_initialiser
 
-    response = client.post(f"accounts/create", data={'title': 'TestTitle'})
+    response = client.post(f"accounts/create", data={'title': 'TestTitle', "accept_terms": True})
 
     # Check for successful redirection to "accounts.show"
     assert response.status_code == 302
@@ -25,7 +29,7 @@ def test_create_error_redirect(client_initialiser, account_initialiser, first_ac
     Account = account_initialiser
     client = client_initialiser
 
-    response = client.post(f"accounts/create", data={'title': None})
+    response = client.post(f"accounts/create", data={'title': None, "accept_terms": True})
 
     # Ensure request is forwarded to index page, since error occurred
     assert response.status_code == 302
@@ -39,11 +43,11 @@ def test_create_account_error_flash(client_initialiser, account_initialiser, fir
     scenarios = [
         {
             "title": "Ab",  # too short
-            "error_message": "title must be between 3 to 15 characters long."
+            "error_message": "Form data is not valid."
         },
         {
             "title": "Abcde"*5,  # too long
-            "error_message": "title must be between 3 to 15 characters long."
+            "error_message": "Form data is not valid."
         },
         {
             "title": "123Hello",  # starts with digit
@@ -52,14 +56,15 @@ def test_create_account_error_flash(client_initialiser, account_initialiser, fir
     ]
 
     for scenario in scenarios:
-        response = client.post(f"accounts/create", data={'title':  scenario["title"]},  follow_redirects=True)
+        response = client.post(f"accounts/create", data={'title':  scenario["title"], "accept_terms": True},  follow_redirects=True)
+
         assert scenario["error_message"] in response.data.decode() # Ensure correct flash message is displayed
 
 def test_create_account_success_flash(client_initialiser, account_initialiser):
     client = client_initialiser
     Account = account_initialiser
 
-    response = client.post(f"accounts/create", data={'title': "New"},  follow_redirects=True)
+    response = client.post(f"accounts/create", data={'title': "New", "accept_terms": True},  follow_redirects=True)
     assert "Successfully created new account" in response.data.decode()
 
     new_account = Account.query.filter(Account.title=="New").first()
@@ -70,10 +75,10 @@ def test_create_duplicate_iban(client_initialiser, db_initialiser, first_account
     Account, Transaction, db_session = db_initialiser
 
     # Create the second account
-    client.post("/accounts/create", data={"title": "Duplicate"}, follow_redirects=True)
+    client.post("/accounts/create", data={"title": "Duplicate", "accept_terms": True}, follow_redirects=True)
 
     # Create a third account
-    response = client.post("/accounts/create", data={"title": "Duplicate2"}, follow_redirects=True)
+    response = client.post("/accounts/create", data={"title": "Duplicate2", "accept_terms": True}, follow_redirects=True)
 
     # Verify that IBAN has been incremented
     third_account = Account.query.filter(Account.title=="Duplicate2").first()
@@ -99,11 +104,11 @@ def test_create_accounts_exceeds_limit(client_initialiser, db_initialiser, first
 
     # Create 4 accounts
     for i in range(4):
-        client.post("/accounts/create", data={"title": "Duplicate"}, follow_redirects=True)
+        client.post("/accounts/create", data={"title": "Duplicate", "accept_terms": True}, follow_redirects=True)
         assert Account.query.count() == (i+2)
 
     # Create 6th account
-    response = client.post("/accounts/create", data={"title": "Duplicate"}, follow_redirects=True)
+    response = client.post("/accounts/create", data={"title": "Duplicate", "accept_terms": True}, follow_redirects=True)
     assert "Cannot add more than 5 accounts." in response.data.decode()
 
     assert Account.query.count() == 5
@@ -111,6 +116,18 @@ def test_create_accounts_exceeds_limit(client_initialiser, db_initialiser, first
     # Verify redirect to show page of first account
 
     assert response.request.path == f"/accounts/{Account.query.all()[0].id}"
+
+def test_create_account_term_not_accepted_flash(client_initialiser, account_initialiser, first_account):
+    Account = account_initialiser
+    client = client_initialiser
+
+    response = client.post(f"accounts/create", data={'title': "ValidTitle"},  follow_redirects=True)
+
+    # Ensure request is forwarded to index ->showpage of first acount, since error occurred
+    assert response.status_code == 200
+    assert "Form data is not valid" in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
 
 ## API tests
 def test_api_create_account_missing_title(client_initialiser):
