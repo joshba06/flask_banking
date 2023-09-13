@@ -27,6 +27,37 @@ components:
         type: "integer"
 paths:
   /accounts:
+    get:
+        operationId: "project.accounts.api.api_get_all_accounts"
+        tags:
+          - "Account"
+        summary: "Read the list of all accounts"
+        responses:
+          "200":
+            description: "Successfully read accounts list"
+            content:
+              application/json:
+                schema:
+                  type: "array"
+                  items:
+                    type: "object"
+                    required:
+                      - id
+                      - title
+                      - iban
+                    properties:
+                      id:
+                        type: "string"
+                        description: "Unique identifier for the Account"
+                        example: "1"
+                      title:
+                        type: "string"
+                        description: "Title of the Account"
+                        example: "Savings"
+                      iban:
+                        type: "string"
+                        description: "International Bank Account Number of the Account"
+                        example: "DE89370400440532013000"
     post:
       operationId: "project.accounts.api.api_create_account"
       tags:
@@ -75,6 +106,30 @@ paths:
                   message:
                     type: "string"
   /accounts/{id}:
+    get:
+      operationId: "project.accounts.api.api_get_one_account"
+      tags:
+        - Account
+      summary: "Read one account"
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: "Successfully read account"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                    example: "1"
+                  title:
+                    type: "string"
+                    example: "User's Account"
+                  iban:
+                    type: "string"
+                    example: "DE89370400440532013000"
     delete:
       operationId: "project.accounts.api.api_delete_account"
       tags:
@@ -84,7 +139,7 @@ paths:
         - $ref: "#/components/parameters/id"
       responses:
         "204":
-          description: "Successfully deleted person"
+          description: "Successfully deleted account"
 
 
 

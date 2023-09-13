@@ -339,6 +339,58 @@ def test_api_delete_last_account(client_initialiser, two_accounts, account_initi
 
     assert account_initialiser.query.limit(2).count() == 1
 
+# get
+def test_api_get_account_invalid_id(client_initialiser):
+    client = client_initialiser
+
+    response = client.get("/api/accounts/x")
+    assert response.status_code == 404
+
+    response = client.get("/api/accounts/99")
+    assert response.status_code == 404
+    assert response.json['status'] == "error"
+    assert response.json['detail'] == "Account not found."
+
+def test_api_get_account_success(client_initialiser, two_accounts):
+    client = client_initialiser
+
+    response = client.get(f"/api/accounts/{two_accounts[0].id}")
+    assert response.status_code == 200
+    assert response.json[0]['title'] == two_accounts[0].title
+    assert response.json[0]['id'] == str(two_accounts[0].id)
+    assert response.json[0]['iban'] == two_accounts[0].iban
+
+    response = client.get(f"/api/accounts/{two_accounts[1].id}")
+    assert response.status_code == 200
+    assert response.json[0]['title'] == two_accounts[1].title
+    assert response.json[0]['id'] == str(two_accounts[1].id)
+    assert response.json[0]['iban'] == two_accounts[1].iban
+
+# get all
+def test_api_get_all_accounts_success(client_initialiser, two_accounts, account_initialiser):
+    client = client_initialiser
+    Account = account_initialiser
+
+    assert Account.query.count() == 2
+
+    response = client.get("api/accounts")
+
+    assert len(response.json) == 2
+    assert response.json[0]["id"] == "1"
+    assert response.json[1]["id"] == "2"
+
+def test_api_get_all_accounts_no_accounts(client_initialiser, account_initialiser):
+    client = client_initialiser
+    Account = account_initialiser
+
+    assert Account.query.count() == 0
+
+    response = client.get("api/accounts")
+
+    assert response.status_code == 404
+    assert response.json['detail'] == "No accounts found."
+    assert response.json['status'] == "error"
+
 
 
 # # def test_update_existing_account(client_initialiser, db_initialiser, first_account):
