@@ -17,6 +17,14 @@ components:
           type: "string"
           minLength: 3
           maxLength: 15
+  parameters:
+    id:
+      name: "id"
+      description: "Unique identifier (ID) of Account"
+      in: path
+      required: True
+      schema:
+        type: "integer"
 paths:
   /accounts:
     post:
@@ -66,6 +74,19 @@ paths:
                     type: "string"
                   message:
                     type: "string"
+  /accounts/{id}:
+    delete:
+      operationId: "project.accounts.api.api_delete_account"
+      tags:
+        - Account
+      summary: "Delete an account"
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: "Successfully deleted person"
+
+
 
 #     Transactions:
 #       type: "object"

@@ -164,8 +164,49 @@ def test_get_not_allowed_for_update_route(client_initialiser, first_account):
     # Check if the status code is 405 Method Not Allowed
     assert response.status_code == 405
 
+# delete route
+@pytest.fixture
+def two_accounts(client_initialiser, account_initialiser):
+    Account = account_initialiser
+    assert Account.query.count() == 0
+
+    # Create 2 accounts
+    client_initialiser.post("/accounts/create", data={"title": "first_account", "accept_terms": True})
+    client_initialiser.post("/accounts/create", data={"title": "second_account", "accept_terms": True})
+    assert Account.query.count() == 2
+
+    account1 = Account.query.filter(Account.title=="first_account").first()
+    account2 = Account.query.filter(Account.title=="second_account").first()
+    return account1, account2
+
+def test_delete_account_nonexistent_account(client_initialiser, two_accounts):
+    response = client_initialiser.post("/accounts/999/delete", follow_redirects=True)
+    assert "Could not find account." in response.data.decode()
+    assert response.request.path == f"/accounts/{two_accounts[0].id}"
+
+def test_delete_account_last_account(client_initialiser, two_accounts, account_initialiser):
+
+    client_initialiser.post(f"/accounts/{two_accounts[0].id}/delete")
+    assert account_initialiser.query.count() == 1
+
+    response = client_initialiser.post(f"/accounts/{two_accounts[1].id}/delete", follow_redirects=True)
+
+    assert "Cannot delete the last account." in response.data.decode()
+    assert response.request.path == f"/accounts/{two_accounts[1].id}"
+
+def test_successful_delete(client_initialiser, two_accounts, account_initialiser):
+
+    response = client_initialiser.post(f"/accounts/{two_accounts[0].id}/delete", follow_redirects=True)
+    assert account_initialiser.query.count() == 1
+
+    assert "Successfully deleted account." in response.data.decode()
+    assert response.request.path == f"/accounts/{two_accounts[1].id}"
+
+
 
 ## API tests
+
+# create
 def test_api_create_account_missing_title(client_initialiser):
     client = client_initialiser
     response = client.post("/api/accounts", json={})
@@ -249,8 +290,54 @@ def test_api_create_accounts_exceed_limit(client_initialiser, account_initialise
     assert response.json['status'] == "error"
     assert response.json['detail'] == "Cannot add more than 5 accounts."
 
+# delete
+def test_api_delete_account_success(client_initialiser, two_accounts):
+    client = client_initialiser
 
+    response = client.delete("/api/accounts/1")
+    assert response.status_code == 200
+    assert response.json['status'] == "success"
+    assert response.json['detail'] == "Successfully deleted account."
 
+    # Further test to ensure it's actually deleted
+    response = client.delete("/api/accounts/1")
+    assert response.status_code == 404
+
+def test_api_delete_account_no_id(client_initialiser):
+    client = client_initialiser
+
+    response = client.delete("/api/accounts/")
+    assert response.status_code == 404
+
+def test_api_delete_account_invalid_id_type(client_initialiser):
+    client = client_initialiser
+
+    response = client.delete("/api/accounts/x")
+    assert response.status_code == 404
+
+def test_api_delete_nonexistent_account(client_initialiser):
+
+    response = client_initialiser.delete("/api/accounts/999")
+
+    assert response.status_code == 404
+    assert response.json['status'] == "error"
+    assert response.json['detail'] == "Account not found."
+
+def test_api_delete_last_account(client_initialiser, two_accounts, account_initialiser):
+
+    # Delete first account
+    response = client_initialiser.delete(f"/api/accounts/{two_accounts[0].id}")
+    assert response.status_code == 200
+
+    assert account_initialiser.query.limit(2).count() == 1
+
+    # Attempt deleting last account
+    response = client_initialiser.delete(f"/api/accounts/{two_accounts[1].id}")
+    assert response.status_code == 400
+    assert response.json['status'] == "error"
+    assert response.json['detail'] == "Cannot delete the last account."
+
+    assert account_initialiser.query.limit(2).count() == 1
 
 
 

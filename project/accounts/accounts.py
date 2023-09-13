@@ -45,7 +45,6 @@ class AccountForm(FlaskForm):
                             ])
     accept_terms = BooleanField("Terms", validators=[DataRequired()])
     submit = SubmitField("Create")
-    delete = SubmitField("Delete")
 
 class EditAccountForm(AccountForm):
     # Overriding the accept_terms field to make it not required
@@ -261,25 +260,30 @@ def update(account_id):
 
     return redirect(url_for("accounts.show", account_id=account_id))
 
-
-
 @accounts_bp.route("/accounts/<int:account_id>/delete", methods=["POST"])
 def delete(account_id):
 
+    delete_account_form = DeleteAccountForm()
+    if not delete_account_form.validate(): # Validates hidden_field (account is being deleted using form not url)
+        flash("Form data is not valid.", "error")
+        return redirect(url_for("accounts.index"))
+
+    account_to_delete = Account.query.get(account_id)
+    if not account_to_delete:
+        flash("Could not find account.", "error")
+        return redirect(url_for("accounts.index"))
+
+    if Account.query.limit(2).count() <= 1:
+        flash("Cannot delete the last account.", "error")
+        return redirect(url_for("accounts.show", account_id=account_id))
+
     try:
-        account_to_delete = db_session.query(Account).filter(Account.id == account_id).first()
-        if not account_to_delete:
-            flash("Could not find account.", "error")
-            return redirect(url_for("accounts.show", account_id=db_session.query(Account).first().id))
-
-        account_count = db_session.query(Account).count()
-        if account_count <= 1:
-            flash("Cannot delete the last account.", "error")
-
         db_session.delete(account_to_delete)
         db_session.commit()
+
+        next_account_id = Account.query.first().id
         flash('Successfully deleted account.', "success")
-        return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
+        return redirect(url_for("accounts.show", account_id=next_account_id))
 
     except Exception as e:
         db_session.rollback()

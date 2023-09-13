@@ -4,7 +4,7 @@ from flask import jsonify
 # Models
 from project.models import Account
 from project.accounts.accounts import create_account, generate_unique_iban
-
+from project.db import db_session
 
 def api_create_account(account):
 
@@ -28,3 +28,30 @@ def api_create_account(account):
             }), 201
     else:
         return jsonify({"status": "error", "detail": message}), 400
+
+def api_delete_account(id):
+
+    if not id:
+        return jsonify({"status": "error", "detail": "This was unexpected. Swagger should have handled this..."}), 400
+
+    account_to_delete = Account.query.get(id)
+    if not account_to_delete:
+        return jsonify({"detail": "Account not found.", "status": "error"}), 404
+
+    if Account.query.limit(2).count() <= 1:
+        return jsonify({"detail": "Cannot delete the last account.", "status": "error"}), 400
+
+    try:
+        db_session.delete(account_to_delete)
+        db_session.commit()
+
+        next_account_id = Account.query.first().id
+        return jsonify({
+            "detail": "Successfully deleted account.",
+            "status": "success"
+        }), 200
+
+    except Exception as e:  # Keep this for unexpected exceptions
+        db_session.rollback()
+        print(f"Error occurred while deleting account: {e}")
+        return jsonify({"detail": "Something went wrong while deleting account.", "status": "error"}), 500
