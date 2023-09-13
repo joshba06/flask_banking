@@ -10,11 +10,11 @@ from pprint import pprint
 # Forms
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, DateField, SelectField, BooleanField
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, Length, ValidationError, Regexp, InputRequired
 
 
 # Models
-from project.models import Account, Transaction, AccountLimitException
+from project.models import Account, Transaction, AccountLimitException, IBANAlreadyExistsError
 from project.db import db_session
 
 # Forms
@@ -36,7 +36,13 @@ class FilterForm(FlaskForm):
     clear = SubmitField("Clear")
 
 class AccountForm(FlaskForm):
-    title = StringField("Title", render_kw={"placeholder": "e.g. 'Main' or 'Savings'"})
+    title = StringField("Title",
+                        render_kw={"placeholder": "e.g. 'Main' or 'Savings'"},
+                        validators=[
+                            DataRequired(),
+                            Length(min=3, max=15)
+                            # Further validation for string done in JS, because impossible if not using .is_validated()
+                            ])
     iban = SelectField("Iban", choices = ["Coming soon..."], render_kw = {'disabled': 'disabled'})
     icon = SelectField("Icon", choices = ["Coming soon..."], render_kw = {'disabled': 'disabled'})
     accept_terms = BooleanField("Terms", validators=[DataRequired()])
@@ -49,8 +55,6 @@ class DeleteAccountForm(FlaskForm):
 
 @accounts_bp.route("/accounts", methods=["GET"])
 def index():
-    print("I am here")
-    # By default, forward to show page of any account
     return redirect(url_for("accounts.show", account_id=Account.query.all()[0].id))
 
 @accounts_bp.route("/accounts/<int:account_id>", methods=["GET", "POST"])
@@ -158,43 +162,62 @@ def show(account_id, transactions_filter=None):
 
 @accounts_bp.route("/accounts/create", methods=["POST"])
 def create():
-
     account_form = AccountForm()
+    new_iban = generate_unique_iban()
+    status, message = create_account(new_iban, account_form.title.data)
 
+    flash(message, status)
+
+    if status == "success":
+        return redirect(url_for("accounts.show", account_id=Account.query.filter_by(iban=new_iban).first().id))
+    else:
+        return redirect(url_for("accounts.index"))
+
+def generate_unique_iban():
     # Create new iban
     iban = "GB29000060161331920000"
-    all_ibans = [account.iban for account in Account.query.all()]
-    iban_invalid = True
-    increment = 1
-    while iban_invalid:
-        last_four = iban[-4:]
-        incremented_value = int(last_four) + increment
-        if incremented_value == 10000:
-            incremented_value = 0
-        new_last_four = "{:04}".format(incremented_value)
-        new_iban = iban[:-4] + new_last_four
-        if new_iban not in all_ibans:
-            iban_invalid = False
-        else:
-            increment += 1
+    if Account.query.count() > 0:
+        all_ibans = [account.iban for account in Account.query.all()]
+        iban_invalid = True
+        increment = 1
+        while iban_invalid:
+            last_four = iban[-4:]
+            incremented_value = int(last_four) + increment
+            if incremented_value == 10000:
+                incremented_value = 0
+            new_last_four = "{:04}".format(incremented_value)
+            new_iban = iban[:-4] + new_last_four
+            if new_iban not in all_ibans:
+                iban_invalid = False
+            else:
+                increment += 1
+    else:
+        new_iban = iban
+    return new_iban
 
+def create_account(iban, title):
     try:
-        new_account = Account(iban=new_iban, title=account_form.title.data)
+        new_account = Account(iban=iban, title=title)
         db_session.add(new_account)
         db_session.commit()
         print(f"Successfully created new account: {new_account}")
-        flash('Successfully created new account.', "success")
-        return redirect(url_for("accounts.show", account_id=new_account.id))
-    except ValueError as ve:
+        return "success", 'Successfully created new account.'
+    except ValueError as ve: # This will capture all ValueErrors raised in __init__
         db_session.rollback()
-        print(f"Error: {ve}")
-        flash('Account title must be a string and max length of 15 characters.', "error")
-        return redirect(url_for("accounts.index"))
+        print(f"Error: {ve}") # Display the actual error message from __init__
+        return "error", f"{ve}"
+    except IBANAlreadyExistsError as ib:
+        db_session.rollback()
+        print(f"Error: {ib}") # Display the actual error message from __init__
+        return "error", f"{ib}"
+    except AccountLimitException as ale:
+        db_session.rollback()
+        print(f"Error: {ale}") # Display the actual error message from __init__
+        return "error", f"{ale}"
     except Exception as e:
         db_session.rollback()
         print(f"Error occurred while creating new account: {e}")
-
-        return redirect(url_for("accounts.index"))
+        return "error", 'Error occurred while creating the account.'
 
 @accounts_bp.route("/accounts/<int:account_id>/update", methods=["POST"])
 def update(account_id):

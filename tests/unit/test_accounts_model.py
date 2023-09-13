@@ -2,102 +2,160 @@ import pytest
 from pprint import pprint
 from sqlalchemy.exc import IntegrityError
 
-## Model / db tests
-def test_create_account(db_initialiser):
-    Account, _, db_session = db_initialiser
+## Model tests (test the __init__ method)
+def test_valid_account_creation(account_initialiser):
+    Account = account_initialiser
 
-    account = Account(title="John's Savings", iban="DE1234567890123456")
-    db_session.add(account)
-    db_session.commit()
+    account = Account("ValidTitle", "DE89370400440532013000")
+    assert account.title == "ValidTitle"
+    assert account.iban == "DE89370400440532013000"
 
-    retrieved_account = db_session.query(Account).first()
-    assert retrieved_account.title == "John's Savings"
-    assert retrieved_account.iban == "DE1234567890123456"
+def test_invalid_title_type(account_initialiser):
+    Account = account_initialiser
 
-def test_invalid_title_type(db_initialiser):
-    Account, _, db_session = db_initialiser
+    with pytest.raises(ValueError, match="title should be of type str."):
+        Account(12345, "DE89370400440532013000")
 
-    with pytest.raises(ValueError, match="'title' should be of type 'str'."):
-        Account(title=12345, iban="DE1234567890123456")
+def test_short_title_length(account_initialiser):
+    Account = account_initialiser
 
-def test_invalid_title_length(db_initialiser):
-    Account, _, db_session = db_initialiser
-    with pytest.raises(ValueError, match="'title' cannot exceed 15 characters."):
-        Account(title="Hello12345678911", iban="DE1234567890123456")
+    with pytest.raises(ValueError, match="title must be between 3 to 15 characters long."):
+        Account("ab", "DE89370400440532013000")
 
-def test_invalid_iban_type(db_initialiser):
-    Account, _, db_session = db_initialiser
+def test_long_title_length(account_initialiser):
+    Account = account_initialiser
 
-    with pytest.raises(ValueError, match="'iban' should be of type 'str'."):
-        Account(title="John's Savings", iban=1234567890123456)
+    with pytest.raises(ValueError, match="title must be between 3 to 15 characters long."):
+        Account("a"*16, "DE89370400440532013000")
 
-def test_repr_method(db_initialiser):
-    Account, _, db_session = db_initialiser
+def test_invalid_iban_type(account_initialiser):
+    Account = account_initialiser
 
-    account = Account(title="John's Savings", iban="DE1234567890123456")
-    assert str(account) == "Account with iban: DE1234567890123456"
+    with pytest.raises(ValueError, match="iban should be of type str."):
+        Account("ValidTitle", 12345678901234567890)
 
-def test_duplicate_iban(db_initialiser):
-    # Create the first account with a specific IBAN
-    Account, _, db_session = db_initialiser
+def test_short_iban_length(account_initialiser):
+    Account = account_initialiser
 
-    account1 = Account(title="John's Savings", iban="DE1234567890123456")
-    db_session.add(account1)
-    db_session.commit()
+    with pytest.raises(ValueError, match="iban must be exactly 22 characters long."):
+        Account("ValidTitle", "DE89370400440532")
 
-    # Attempt to create a second account with the same IBAN
-    account2 = Account(title="Jane's Savings", iban="DE1234567890123456")
-    db_session.add(account2)
-    with pytest.raises(IntegrityError):
-        db_session.commit()
+def test_long_iban_length(account_initialiser):
+    Account = account_initialiser
 
-    db_session.rollback()
+    with pytest.raises(ValueError, match="iban must be exactly 22 characters long."):
+        Account("ValidTitle", "DE893704004405320130001234")
 
-def test_duplicate_title(db_initialiser):
-    # Create the first account with a specific title
-    Account, _, db_session = db_initialiser
+# -> No test for dupicate iban, because that requires db connection and thus no model test
 
-    account1 = Account(title="John's Savings", iban="DE1234567890123456")
-    db_session.add(account1)
-    db_session.commit()
+def test_repr_method(account_initialiser):
+    Account = account_initialiser
 
-    # Create a second account with the same title but a different IBAN
-    account2 = Account(title="John's Savings", iban="DE6543210987654321")
-    db_session.add(account2)
-    db_session.commit()
+    account = Account(title="John's Savings", iban="GB29000060161331920000")
+    assert str(account) == "[Account] iban: GB29000060161331920000, title: John's Savings"
 
-    # Query both accounts
-    accounts = db_session.query(Account).filter_by(title="John's Savings").all()
+## Account sub-function tests (create_account, generate_unique_iban ...)
 
-    # Validate that two accounts exist with the same title
-    assert len(accounts) == 2
-    ibans = {account.iban for account in accounts}
-    assert "DE1234567890123456" in ibans
-    assert "DE6543210987654321" in ibans
+def test_create_account_valid_account_creation(account_initialiser): # -> Sub function of create() route
+    from project.accounts.accounts import create_account
 
-def test_limit_accounts_within_limit(db_initialiser):
-    Account, _, db_session = db_initialiser
+    status, message = create_account("GB29000060161331920001", "TestTitle")
+    assert status == "success"
+    assert message == 'Successfully created new account.'
+
+def test_create_account_invalid_iban_type(account_initialiser):
+    from project.accounts.accounts import create_account
+
+    status, message = create_account(1234567890123456789012, "TestTitle")
+    assert status == "error"
+    assert "iban should be of type str" in message
+
+def test_create_account_invalid_title_type(account_initialiser):
+    from project.accounts.accounts import create_account
+
+    status, message = create_account("GB29000060161331920001", 123)
+    assert status == "error"
+    assert "title should be of type str" in message
+
+def test_create_account_short_iban(account_initialiser):
+    from project.accounts.accounts import create_account
+
+    status, message = create_account("GB29000060161331", "TestTitle")
+    assert status == "error"
+    assert "iban must be exactly 22 characters long" in message
+
+def test_create_account_long_iban(account_initialiser):
+    from project.accounts.accounts import create_account
+
+    status, message = create_account("GB290000601613319200012345", "TestTitle")
+    assert status == "error"
+    assert "iban must be exactly 22 characters long" in message
+
+def test_create_account_short_title(account_initialiser):
+    from project.accounts.accounts import create_account
+
+    status, message = create_account("GB29000060161331920001", "TT")
+    assert status == "error"
+    assert "title must be between 3 to 15 characters long" in message
+
+def test_create_account_long_title(account_initialiser):
+    from project.accounts.accounts import create_account
+
+    status, message = create_account("GB29000060161331920001", "ThisTitleIsTooLong")
+    assert status == "error"
+    assert "title must be between 3 to 15 characters long" in message
+
+def test_create_account_iban_duplicate(account_initialiser):
+    from project.accounts.accounts import create_account
+
+    status1, message1 = create_account("GB29000060161331920001", "Title1")
+    assert status1 != "error"
+
+    status2, message2 = create_account("GB29000060161331920001", "Title2")
+    assert status2 == "error"
+    assert "The IBAN is already taken by another account." in message2
+
+def test_create_account_iban_increases_and_duplicate_title(account_initialiser):
+    from project.accounts.accounts import create_account, generate_unique_iban
+
+    for i in range(5):
+        new_iban = generate_unique_iban()
+        assert new_iban.endswith(f"0{i}")
+        status, message = create_account(new_iban, "Title")
+        assert status == "success"
+
+def test_create_account_accounts_within_limit(account_initialiser):
+    from project.accounts.accounts import create_account, generate_unique_iban
+    Account = account_initialiser
 
     for _ in range(4):
-        db_session.add(Account(f"Account{_}", f"IBAN{_}"))
-    db_session.commit()
+        iban = generate_unique_iban()
+        status, message = create_account(iban, "Title")
+        assert status == "success"
 
     assert Account.query.count() == 4
 
-def test_limit_accounts_at_limit(db_initialiser):
-    Account, _, db_session = db_initialiser
+def test_create_account_accounts_at_limit(account_initialiser):
+    from project.accounts.accounts import create_account, generate_unique_iban
+    Account = account_initialiser
+
     for _ in range(5):
-        db_session.add(Account(f"Account{_}", f"IBAN{_}"))
-    db_session.commit()
+        iban = generate_unique_iban()
+        status, message = create_account(iban, "Title")
+        assert status == "success"
+
     assert Account.query.count() == 5
 
-def test_limit_accounts_exceed_limit(db_initialiser):
-    Account, _, db_session = db_initialiser
-    from project.models import AccountLimitException
+def test_create_account_accounts_exceed_limit(account_initialiser):
+    from project.accounts.accounts import create_account, generate_unique_iban
+    Account = account_initialiser
 
     for _ in range(5):
-        db_session.add(Account(f"Account{_}", f"IBAN{_}"))
-    db_session.commit()
-    with pytest.raises(AccountLimitException):
-        db_session.add( Account(title="Jane's Savings", iban="DE1234567890123456"))
-        db_session.commit()
+        iban = generate_unique_iban()
+        status, message = create_account(iban, "Title")
+        assert status == "success"
+
+    iban = generate_unique_iban()
+    status, message = create_account(iban, "Title")
+    assert status == "error"
+    assert message == "Cannot add more than 5 accounts."

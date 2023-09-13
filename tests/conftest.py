@@ -23,13 +23,27 @@ def app_initialiser():
 
 def pytest_runtest_call(item):
     print(f"\n[{item.name}]")
-    
+
 
 @pytest.fixture()
 def client_initialiser(app_initialiser):
     print("Running client initialiser")
-    app, _, _, _ = app_initialiser
+    app, Account, Transaction, db_session = app_initialiser
+    Account.query.delete()
+    db_session.commit()
+    print(f"Accounts: {Account.query.count()}")
+
     return app.test_client()
+
+@pytest.fixture()
+def account_initialiser(app_initialiser):
+    app, Account, Transaction, db_session = app_initialiser
+    Account.query.delete()
+    db_session.commit()
+    print("Account initialiser")
+    print(Account.query.count())
+    return Account
+
 
 @pytest.fixture()
 def model_initialiser(app_initialiser):

@@ -12,21 +12,34 @@ from project.db import Base, db_session
 
 class AccountLimitException(Exception):
     pass
+class IBANAlreadyExistsError(Exception):
+    pass
+
+def check_iban_exists(iban):
+    existing_account = db_session.query(Account).filter_by(iban=iban).first()
+    if existing_account:
+        raise IBANAlreadyExistsError(f"The IBAN is already taken by another account.")
 
 class Account(Base):
     __tablename__ = "accounts"
     id = Column(Integer, primary_key = True)
     title = Column(String(15), index = True)
-    iban = Column(String(100), index = True, unique = True)
+    iban = Column(String(22), index = True, unique = True)
     transactions = relationship('Transaction', backref='account', lazy="dynamic", cascade="all, delete-orphan")
 
     def __init__(self, title, iban):
-        if not isinstance(title, str):
-            raise ValueError(f"'title' should be of type 'str'.")
-        elif len(title) > 15:
-            raise ValueError(f"'title' cannot exceed 15 characters.")
+        if (not isinstance(title, str)) or (title[0] in "0123456789"):
+            raise ValueError(f"title should be of type str.")
+        elif not (3 <= len(title) <= 15):  # Check if title length is between 3 and 15 characters
+            raise ValueError(f"title must be between 3 to 15 characters long.")
+
         if not isinstance(iban, str):
-            raise ValueError(f"'iban' should be of type 'str'.")
+            raise ValueError(f"iban should be of type str.")
+        elif len(iban) != 22:  # Check if iban length is exactly 22 characters
+            raise ValueError(f"iban must be exactly 22 characters long.")
+
+        # Check if IBAN already exists in the database
+        check_iban_exists(iban)
 
         self.title = title
         self.iban = iban

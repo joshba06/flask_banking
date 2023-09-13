@@ -19,8 +19,8 @@ Base.query = db_session.query_property()
 def init_db():
     from project.models import Account, Transaction
     Base.metadata.create_all(bind=engine)
-    print(f"Continuing db setup with db session at: {db_session.get_bind()}")
-    print(f"Table names: {Base.metadata.tables.keys()}")
+    # print(f"Continuing db setup with db session at: {db_session.get_bind()}")
+    # print(f"Table names: {Base.metadata.tables.keys()}")
 
     if app.app.config["TESTING"] is False:
         print("__________[DB] NORMAL SETUP__________")
@@ -37,9 +37,10 @@ def init_db():
 
 
 def create_database(Account, Transaction):
-    account1 = Account(title="Main account", iban="DE123456")
-    account2 = Account(title="Savings", iban="DE9876")
-    account3 = Account(title="Shared", iban="EN1231")
+
+    account1 = Account(title="Main account", iban="GB29000060161331920000")
+    account2 = Account(title="Savings", iban="GB29000060161331920001")
+    account3 = Account(title="Shared", iban="GB29000060161331920002")
 
     transactions = [
 

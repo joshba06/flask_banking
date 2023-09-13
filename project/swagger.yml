@@ -5,8 +5,68 @@ info:
   version: "1.0.0"
 servers:
   - url: "/api" # allows connections to http://localhost:8000/api.
-# components:
-#   schemas:
+components:
+  schemas:
+    Account:
+      type: "object"
+      required:
+        - title
+      additionalProperties: false
+      properties:
+        title:
+          type: "string"
+          minLength: 3
+          maxLength: 15
+paths:
+  /accounts:
+    post:
+      operationId: "project.accounts.api.api_create_account"
+      tags:
+        - Account
+      summary: "Create an account"
+      requestBody:
+          description: "Account to create"
+          required: True
+          content:
+            application/json:
+              schema:
+                x-body-name: "account"
+                $ref: "#/components/schemas/Account"
+      responses:
+        "201":
+          description: "Successfully created account"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  status:
+                    type: "string"
+                    example: "success"
+                  message:
+                    type: "string"
+                    example: "Successfully created new account."
+                  iban:
+                    type: "string"
+                    example: "DE89370400440532013000"
+                  title:
+                    type: "string"
+                    example: "User's Account"
+                  id:
+                    type: "integer"
+                    example: 1
+        "400":
+          description: "Bad request (e.g., title missing or IBAN already exists)"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  status:
+                    type: "string"
+                  message:
+                    type: "string"
+
 #     Transactions:
 #       type: "object"
 #       required:
@@ -42,16 +102,16 @@ servers:
 #       required: True
 #       schema:
 #         type: "integer"
-paths:
-  /transactions:
-    get:
-      operationId: "project.transactions.transactions.read_all"
-      tags:
-        - "Transactions"
-      summary: "Read the list of transactions"
-      responses:
-        "200":
-          description: "Successfully read transactions list"
+# paths:
+#   /transactions:
+#     get:
+#       operationId: "project.transactions.transactions.read_all"
+#       tags:
+#         - "Transactions"
+#       summary: "Read the list of transactions"
+#       responses:
+#         "200":
+#           description: "Successfully read transactions list"
 #     post:
 #       operationId: "project.transactions.transactions.create"
 #       tags:
