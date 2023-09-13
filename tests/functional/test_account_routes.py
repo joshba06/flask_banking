@@ -128,6 +128,42 @@ def test_create_account_term_not_accepted_flash(client_initialiser, account_init
     assert "Form data is not valid" in response.data.decode()
     assert response.request.path == f"/accounts/{first_account.id}"
 
+# update route
+def test_update_invalid_title_length(client_initialiser, account_initialiser, first_account):
+    client = client_initialiser
+
+    response = client.post(f"/accounts/{first_account.id}/update", data={"title": "Sh"}, follow_redirects=True)
+    assert "Form data is not valid" in response.data.decode()
+    assert response.request.path == "/accounts/1"
+
+    response = client.post(f"/accounts/{first_account.id}/update", data={"title": "Sh"*15}, follow_redirects=True)
+    assert "Form data is not valid" in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_update_invalid_title_type(client_initialiser, account_initialiser, first_account):
+    client = client_initialiser
+
+    response = client.post(f"/accounts/{first_account.id}/update", data={"title": 123}, follow_redirects=True)
+
+    # 123 becomes a string so first char check should prove invalid input
+    assert "Account title cannot start with a digit." in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_update_nonexistent_account(client_initialiser, first_account):
+    client = client_initialiser
+
+    response = client.post("/accounts/999/update", data={"title": "ValidTitle"}, follow_redirects=True)
+    assert "Account not found." in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_get_not_allowed_for_update_route(client_initialiser, first_account):
+    client = client_initialiser
+
+    response = client.get(f"/accounts/{first_account.id}/update")
+
+    # Check if the status code is 405 Method Not Allowed
+    assert response.status_code == 405
+
 
 ## API tests
 def test_api_create_account_missing_title(client_initialiser):

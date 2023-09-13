@@ -166,7 +166,7 @@ def show(account_id, transactions_filter=None):
 def create():
 
     account_form = AccountForm()
-    if not account_form.validate(): # Validates title length, title str type, checkbox
+    if not account_form.validate(): # Validates title length, checkbox (any form input is string by default)
         message = 'Form data is not valid.'
         status = "error"
     else:
@@ -231,13 +231,12 @@ def update(account_id):
 
     edit_account_form = EditAccountForm()
 
-    if not edit_account_form.validate(): # Validates title length, title str type
+    if not edit_account_form.validate(): # Validates title length (input is string by default)
         flash('Form data is not valid.', "error")
         return redirect(url_for("accounts.show", account_id=account_id))
 
     account = Account.query.get(account_id)
     if not account:  # Edge case: Account does not exist.
-        print(f"Could not find account with id {account_id}")
         flash('Account not found.', "error")
         return redirect(url_for("accounts.index"))
 
