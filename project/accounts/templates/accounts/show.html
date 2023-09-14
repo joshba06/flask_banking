@@ -92,7 +92,7 @@ Joshba06 Banking
   <div class="forms">
     <div class="standard-payment">
       <div class="section-title">STANDARD PAYMENT</div>
-      <form action="{{ url_for('transactions.create', account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-standard-payment" novalidate>
+      <form action="{{ url_for('transactions.create', account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-standard-payment">
         {{ transaction_form.hidden_tag() }}
 
         <div class="input-group input-group-sm mr-2">
@@ -105,7 +105,7 @@ Joshba06 Banking
 
 
         <div class="input-group input-group-sm mr-2">
-          {{ transaction_form.amount(class_="form-control", style="width:100px") }}
+          {{ transaction_form.amount(class_="form-control", style="width:100px", id="new-transaction-amount") }}
         </div>
 
         <div class="input-group input-group-sm mr-2">

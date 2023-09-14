@@ -49,7 +49,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
 
 
-// // Add custom invalid field message to New Account form
+// Add custom invalid field messages_________________________________________________________
+
+// New Account form
 const newAccountTitle = document.getElementById("newAccountTitleInput");
 newAccountTitle.addEventListener("input", function(e){
   newAccountTitle.setCustomValidity('');
@@ -66,36 +68,54 @@ editAccountTitle.addEventListener("input", function(e){
   }
 
 });
-
 // Form submission fields
 'use strict';
 
 function initValidation() {
-    // Fetch all the forms we want to apply custom Bootstrap validation styles to
-    var forms = document.getElementsByClassName('needs-validation');
-    console.log("I am here")
-    // Loop over them and prevent submission
-    var validation = Array.prototype.filter.call(forms, function(form) {
-        form.addEventListener('submit', function(event) {
+  // Fetch all the forms we want to apply custom Bootstrap validation styles to
+  var forms = document.getElementsByClassName('needs-validation');
+  // Loop over them and prevent submission
+  var validation = Array.prototype.filter.call(forms, function(form) {
+      form.addEventListener('submit', function(event) {
 
-          // When the submit button of the STANDARD PAYMENT form is pressed and "CATEGORY" exists, display error message
-          if ((event.currentTarget.className.includes("form-standard-payment")) && (document.getElementById("new-transaction-category").value === "Category")) {
-            console.log("STANDARD PAYMENT")
-            document.getElementById("new-transaction-category").setCustomValidity("Invalid field.")
+        // When the submit button of the STANDARD PAYMENT form is pressed and "CATEGORY" exists, display error message
+        if (event.currentTarget.className.includes("form-standard-payment")) {
+          if (document.getElementById("new-transaction-category").value === "Category"){
+            document.getElementById("new-transaction-category").setCustomValidity("Please select a valid category.")
             event.preventDefault();
             event.stopPropagation();
             form.classList.add('was-validated');
           }
-          else if ((event.currentTarget.className.includes("form-subaccount-transfer")) && (document.getElementById("new-transaction-recipient").value === "Recipient")){
-            console.log("SUBACCOUNT TRANSFER")
-            document.getElementById("new-transaction-recipient").setCustomValidity("Invalid field.")
+          if (document.getElementById("new-transaction-amount").value === "0") {
+            document.getElementById("new-transaction-amount").setCustomValidity("Amount cannot be zero (may be negative or positive)")
             event.preventDefault();
             event.stopPropagation();
             form.classList.add('was-validated');
           }
-        }, false);
-    });
+        }
+        else if ((event.currentTarget.className.includes("form-subaccount-transfer")) && (document.getElementById("new-transaction-recipient").value === "Recipient")){
+          console.log("SUBACCOUNT TRANSFER")
+          document.getElementById("new-transaction-recipient").setCustomValidity("Invalid field.")
+          event.preventDefault();
+          event.stopPropagation();
+          form.classList.add('was-validated');
+        }
+      }, false);
+  });
+  // Reset the dropdown's validity when its value changes
+  document.getElementById("new-transaction-category").addEventListener('change', function() {
+    if (this.value !== "Category") {
+        this.setCustomValidity("");
+    }
+  });
+  document.getElementById("new-transaction-amount").addEventListener('input', function() {
+    if (this.value !== "0") {
+        this.setCustomValidity("");
+    }
+  });
 }
+
+
 
 // Ensure the DOM content is loaded before the script runs
 document.addEventListener('DOMContentLoaded', initValidation);

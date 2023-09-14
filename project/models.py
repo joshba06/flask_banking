@@ -65,14 +65,14 @@ class Transaction(Base):
     date_booked = Column(DateTime, nullable=False)
     account_id = Column(Integer, ForeignKey('accounts.id'), nullable=False)
 
-    def __init__(self, description, amount, category, date_booked=None):
+    def __init__(self, description, amount, category, date_booked=None): # No account_id validation because it happens on db level
         if not isinstance(description, str) or len(description) > 80:
-            raise ValueError("The 'description' variable must be a string with less than 80 characters.")
+            raise ValueError("The description variable must be a string with less than 80 characters.")
         else:
             self.description = description
 
-        if not isinstance(amount, (int, float, decimal.Decimal)):
-            raise ValueError("The 'amount' variable must be a decimal, integer or float.")
+        if not isinstance(amount, (int, float, decimal.Decimal)) or amount == 0:
+            raise ValueError("The amount variable must be non-zero decimal, integer or float.")
         else:
             self.amount = decimal.Decimal(amount)
 
@@ -93,24 +93,28 @@ class Transaction(Base):
         return "[{}] description: '{}', category: {}, amount: {:.2f}, saldo: {}".format(self.date_booked, self.description, self.category, self.amount, self.saldo)
 
     def calculate_saldo(self):
-        # Calculate the saldo by summing up the "amount" of older transactions
-        saldo_previous_transactions = db_session.query(func.sum(Transaction.amount)).filter(
-            Transaction.date_booked < self.date_booked,
-            Transaction.account_id == self.account_id
-        ).scalar()
+        try:
+            # Calculate the saldo by summing up the "amount" of older transactions
+            saldo_previous_transactions = db_session.query(func.sum(Transaction.amount)).filter(
+                Transaction.date_booked < self.date_booked,
+                Transaction.account_id == self.account_id
+            ).scalar()
 
-        # If there are no older transactions, saldo is the same as the current transaction's amount
-        if saldo_previous_transactions is None:
-            self.saldo = self.amount
-        else:
-            self.saldo = saldo_previous_transactions + self.amount
+            # If there are no older transactions, saldo is the same as the current transaction's amount
+            if saldo_previous_transactions is None:
+                self.saldo = self.amount
+            else:
+                self.saldo = saldo_previous_transactions + self.amount
 
-        # Update the "saldo" column in the current transaction instance
+            # Update the "saldo" column in the current transaction instance
+            self.saldo = round(self.saldo, 2)
 
-        self.saldo = round(self.saldo, 2)
+            db_session.add(self)
+            db_session.commit()
 
-        db_session.add(self)
-        db_session.commit()
+        except Exception as e:
+            db_session.rollback()  # Rollback in case of errors to keep the DB in a consistent state
+            raise e
 
     @classmethod
     def read_all(cls, account_id, start_date = None, end_date = None, category = None, search_type = None, transaction_description = None):

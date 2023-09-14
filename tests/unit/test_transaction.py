@@ -1,64 +1,125 @@
-# import pytest
-# from datetime import datetime, timedelta
-# from decimal import Decimal
-# from pprint import pprint
+import pytest
+from datetime import datetime, timedelta
+from decimal import Decimal
+from pprint import pprint
 
 # # New tests to be added
 # # Group my month tests are needed if the function will remain.
 
-# ## Model initialisation tests (no db commit so account association isnt tested here)
-# def test_starts_with_empty_database(model_initialiser):
-#     _, Transaction = model_initialiser
-#     assert Transaction.query.count() == 0
+## Model tests (test the __init__ method)
+def test_default_date_booked(model_initialiser):
+    # Test that if no date_booked is provided, it defaults to the current datetime
+    _, Transaction = model_initialiser
 
-# def test_default_date_booked(model_initialiser):
-#     # Test that if no date_booked is provided, it defaults to the current datetime
-#     _, Transaction = model_initialiser
+    transaction = Transaction("Test Transaction", 100.00, "Salary")
+    assert isinstance(transaction.date_booked, datetime)
+    assert transaction.date_booked.date() == datetime.now().date()
 
-#     transaction = Transaction("Test Transaction", 100.00, "Salary")
-#     assert isinstance(transaction.date_booked, datetime)
-#     assert transaction.date_booked.date() == datetime.now().date()
+def test_invalid_long_description(model_initialiser):
+    # Test that a ValueError is raised when the description is too long
+    _, Transaction = model_initialiser
 
-# def test_long_description(model_initialiser):
-#     # Test that a ValueError is raised when the description is too long
-#     _, Transaction = model_initialiser
+    with pytest.raises(ValueError, match="The description variable must be a string with less than 80 characters."):
+        Transaction("A" * 81, 100.00, "Salary")
 
-#     with pytest.raises(ValueError, match="The 'description' variable must be a string with less than 80 characters."):
-#         Transaction("A" * 81, 100.00, "Salary")
+def test_invalid_amount_type(model_initialiser):
+    # Test that a ValueError is raised when the amount is not a valid type
+    _, Transaction = model_initialiser
 
-# def test_invalid_amount_type(model_initialiser):
-#     # Test that a ValueError is raised when the amount is not a valid type
-#     _, Transaction = model_initialiser
+    invalid_amounts = ["abcd", [], {}]
+    for invalid_amount in invalid_amounts:
+        with pytest.raises(ValueError, match="The amount variable must be non-zero decimal, integer or float."):
+            Transaction("Description", invalid_amount, "Rent")
 
-#     with pytest.raises(ValueError, match="The 'amount' variable must be a decimal, integer or float."):
-#         Transaction("Test Transaction", "invalid", "Salary")
+def test_invalid_date_booked_type(model_initialiser):
+    # Test that a ValueError is raised when date_booked is not of type datetime
+    _, Transaction = model_initialiser
 
-# def test_invalid_date_booked_type(model_initialiser):
-#     # Test that a ValueError is raised when date_booked is not of type datetime
-#     _, Transaction = model_initialiser
+    with pytest.raises(ValueError, match="date_booked is not of type datetime"):
+        Transaction("Test Transaction", 100.00, "Salary", date_booked="invalid_date")
 
-#     with pytest.raises(ValueError, match="date_booked is not of type datetime"):
-#         Transaction("Test Transaction", 100.00, "Salary", date_booked="invalid_date")
+def test_invalid_category(model_initialiser):
+    _, Transaction = model_initialiser
 
-# def test_invalid_category(model_initialiser):
-#     _, Transaction = model_initialiser
+    with pytest.raises(ValueError, match="Invalid category value."):
+        Transaction("Test Transaction", 100.00, "Invalid category")
 
-#     with pytest.raises(ValueError, match="Invalid category value."):
-#         Transaction("Test Transaction", 100.00, "Invalid category")
+def test_valid_transaction(model_initialiser):
+    _, Transaction = model_initialiser
 
-# def test_valid_transaction(model_initialiser):
-#     _, Transaction = model_initialiser
+    description = "Valid Transaction"
+    amount = 100.50
+    category = "Salary"
+    date_booked = datetime(2023, 9, 1, 12, 0, 0)
+    transaction = Transaction(description, amount, category, date_booked)
 
-#     description = "Valid Transaction"
-#     amount = 100.50
-#     category = "Salary"
-#     date_booked = datetime(2023, 9, 1, 12, 0, 0)
-#     transaction = Transaction(description, amount, category, date_booked)
+    assert transaction.description == description
+    assert transaction.amount == Decimal("100.50")
+    assert transaction.date_booked == date_booked
+    assert transaction.category == category
 
-#     assert transaction.description == description
-#     assert transaction.amount == Decimal("100.50")
-#     assert transaction.date_booked == date_booked
-#     assert transaction.category == category
+
+## Transaction sub-function tests (create_transaction...)
+@pytest.fixture
+def valid_account(db_initialiser):
+    Account, Transaction, db_session = db_initialiser
+    account = Account("ValidAccount", "DE89370400440532013000")
+    db_session.add(account)
+    db_session.commit()
+    assert Account.query.count() == 1
+
+    return account
+
+def test_create_transaction_valid_transaction(valid_account):
+    from project.transactions.transactions import create_transaction
+
+    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent")
+    assert status == "success"
+    assert message == "Successfully created new transaction."
+
+def test_create_transaction_invalid_description(valid_account):
+    from project.transactions.transactions import create_transaction
+
+    status, message, _ = create_transaction(valid_account, "A" * 81, 100, "Rent")
+    assert status == "error"
+    assert message == "The description variable must be a string with less than 80 characters."
+
+def test_create_transaction_invalid_amount(valid_account):
+    from project.transactions.transactions import create_transaction
+
+    status, message, _  = create_transaction(valid_account, "Description", "abcd", "Rent")
+    assert status == "error"
+    assert message == "The amount variable must be non-zero decimal, integer or float."
+
+def test_create_transaction_invalid_category(valid_account):
+    from project.transactions.transactions import create_transaction
+
+    status, message, _ = create_transaction(valid_account, "Description", 100, "Holiday")
+    assert status == "error"
+    assert message == "Invalid category value."
+
+def test_create_transaction_invalid_date_booked(valid_account):
+    from project.transactions.transactions import create_transaction
+
+    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", "2023-09-15")
+    assert status == "error"
+    assert message == "date_booked is not of type datetime."
+
+def test_create_transaction_valid_date_booked(valid_account):
+    from project.transactions.transactions import create_transaction
+
+    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", datetime(2023, 9, 1, 12, 0, 0))
+    assert status == "success"
+    assert message == "Successfully created new transaction."
+
+def test_create_transaction_database_error(account_initialiser):
+    from project.transactions.transactions import create_transaction
+
+    status, message, _ = create_transaction(None, "Description", 100, "Rent")
+    assert status == "error"
+    assert message == "Error occurred while creating the account."
+
+
 
 
 # ## Database tests (inkl. association of models Account and Transaction)
@@ -74,148 +135,6 @@
 #     with pytest.raises(ValueError, match="Invalid category value."):
 #         Transaction.read_all(account_id=1, category="InvalidCategory")
 
-# def test_transaction_association(db_initialiser):
-#     Account, Transaction, db_session = db_initialiser
-
-#     account = Account(title="John's Savings", iban="DE1234567890123456")
-#     db_session.add(account)
-#     db_session.commit()
-
-#     transaction = Transaction(description="Salary", amount=1000.0, category="Salary")
-#     transaction.account = account
-#     db_session.add(transaction)
-#     db_session.commit()
-
-#     retrieved_transaction = db_session.query(Transaction).first()
-#     assert retrieved_transaction.description == "Salary"
-#     assert retrieved_transaction.account == account
-
-# def test_backref_association(db_initialiser):
-#     Account, Transaction, db_session = db_initialiser
-
-#     account = Account(title="John's Savings", iban="DE1234567890123456")
-#     db_session.add(account)
-#     db_session.commit()
-
-#     transaction = Transaction(description="Rent", amount=-500.0, category="Rent")
-#     transaction.account = account
-#     db_session.add(transaction)
-#     db_session.commit()
-
-#     retrieved_account = db_session.query(Account).first()
-
-#     assert retrieved_account.transactions.count() == 1
-#     assert retrieved_account.transactions[0].description == "Rent"
-
-# def test_multiple_transactions(db_initialiser):
-#     Account, Transaction, db_session = db_initialiser
-
-#     account = Account(title="Jane's Savings", iban="DE6543210987654321")
-#     db_session.add(account)
-#     transaction1 = Transaction(description="Utilities", amount=-150.0, category="Utilities")
-#     transaction2 = Transaction(description="Groceries", amount=-80.0, category="Groceries")
-#     account.transactions = [transaction1, transaction2]
-#     db_session.add_all([transaction1, transaction2])
-#     db_session.commit()
-
-#     retrieved_account = db_session.query(Account).filter_by(title="Jane's Savings").first()
-#     assert retrieved_account.transactions.count() == 2
-
-# def test_number_of_rows_added(db_initialiser):
-#     # Create instances of the Transaction class and add them to the database
-#     Account, Transaction, db_session = db_initialiser
-#     account1 = Account(title="Jane's Savings", iban="DE6543210987654321")
-#     account2 = Account(title="Jane's Savings", iban="DE6543210987654329")
-
-#     transactions = [
-#         Transaction("Transaction 1", 100.00, "Salary"),
-#         Transaction("Transaction 2", 200.00, "Salary"),
-#     ]
-#     account1.transactions = transactions
-#     account2.transactions.append(Transaction("Transaction 3", 300.00, "Salary"))
-#     db_session.add_all([account1, account2])
-#     db_session.commit()
-
-#     num_rows_acc1 = db_session.query(Account).filter_by(iban="DE6543210987654321").first().transactions.count()
-#     num_rows_acc2 = db_session.query(Account).filter_by(iban="DE6543210987654329").first().transactions.count()
-#     assert num_rows_acc1 == len(transactions)
-#     assert num_rows_acc2 == 1
-
-# def test_saldo_calculation_with_empty_database(db_initialiser):
-#     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
-#     Account, Transaction, db_session = db_initialiser
-#     account = Account(title="Jane's Savings", iban="DE6543210987654321")
-
-#     transactions = [
-#         Transaction("Transaction 1", 100.00, "Salary"),
-#         Transaction("Transaction 2", 200.00, "Salary"),
-#         Transaction("Transaction 3", 300.00, "Salary"),
-#     ]
-#     account.transactions = transactions
-#     db_session.add(account)
-#     db_session.commit()
-
-#     db_session.expire_all()
-#     queried_transactions = db_session.query(Transaction).all()
-#     for transaction in queried_transactions:
-#         transaction.calculate_saldo()
-
-#     assert round(transactions[0].saldo, 2) == Decimal('100')
-#     assert round(transactions[1].saldo, 2) == Decimal('300')
-#     assert round(transactions[2].saldo, 2) == Decimal('600')
-
-# def test_saldo_calculation_only_current_account(db_initialiser):
-#     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
-#     Account, Transaction, db_session = db_initialiser
-#     account1 = Account(title="Jane's Savings", iban="DE6543210987654321")
-#     account2 = Account(title="Jane's Savings 2", iban="DE6543210987654399")
-
-#     transactions = [
-#         Transaction("Transaction 2", 200.00, "Salary"),
-#         Transaction("Transaction 3", 300.00, "Salary"),
-#     ]
-#     account1.transactions = transactions
-#     account2.transactions.append(Transaction("Transaction 1", 100.00, "Salary"))
-
-#     db_session.add_all([account1, account2])
-#     db_session.commit()
-
-#     db_session.expire_all()
-#     queried_transactions_acc1 = db_session.query(Transaction).filter(Transaction.account_id==account1.id).all()
-#     queried_transactions_acc2 = db_session.query(Transaction).filter(Transaction.account_id==account2.id).all()
-
-#     for transaction in queried_transactions_acc1:
-#         transaction.calculate_saldo()
-#     for transaction in queried_transactions_acc2:
-#         transaction.calculate_saldo()
-
-#     assert round(queried_transactions_acc1[0].saldo, 2) == Decimal('200')
-#     assert round(queried_transactions_acc1[1].saldo, 2) == Decimal('500')
-#     assert round(queried_transactions_acc2[0].saldo, 2) == Decimal('100')
-
-# def test_saldo_calculation_with_empty_unordered_dates(db_initialiser):
-#     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
-#     Account, Transaction, db_session = db_initialiser
-#     account = Account(title="Jane's Savings", iban="DE6543210987654321")
-
-#     transactions = [
-#         Transaction("Transaction 1", 50.00, "Salary", date_booked=datetime(2023,8,15,15,0,0)), # First added, last in time
-#         Transaction("Transaction 2", -100.00, "Rent", date_booked=datetime(2023,8,15,12,0,0)),
-#         Transaction("Transaction 3", 300.00, "Salary", date_booked=datetime(2023,8,15,10,0,0)) # Last added, first in time
-#     ]
-#     account.transactions = transactions
-#     db_session.add(account)
-#     db_session.commit()
-#     db_session.expire_all()
-
-#     queried_transactions = db_session.query(Transaction).all()
-
-#     for transaction in queried_transactions:
-#         transaction.calculate_saldo()
-
-#     assert round(transactions[0].saldo, 2) == Decimal('250')
-#     assert round(transactions[1].saldo, 2) == Decimal('200')
-#     assert round(transactions[2].saldo, 2) == Decimal('300')
 
 # @pytest.fixture()
 # def generate_transactions():

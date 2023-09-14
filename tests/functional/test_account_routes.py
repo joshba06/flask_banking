@@ -202,6 +202,9 @@ def test_successful_delete(client_initialiser, two_accounts, account_initialiser
     assert "Successfully deleted account." in response.data.decode()
     assert response.request.path == f"/accounts/{two_accounts[1].id}"
 
+# Test delete account and associated transactions
+def test_delete_account_associated_transactions():
+    assert 1 == 2
 
 
 ## API tests
@@ -339,6 +342,10 @@ def test_api_delete_last_account(client_initialiser, two_accounts, account_initi
 
     assert account_initialiser.query.limit(2).count() == 1
 
+# Test delete account and associated transactions
+def test_api_delete_account_associated_transactions():
+    assert 1 == 2
+
 # get
 def test_api_get_account_invalid_id(client_initialiser):
     client = client_initialiser
@@ -390,119 +397,3 @@ def test_api_get_all_accounts_no_accounts(client_initialiser, account_initialise
     assert response.status_code == 404
     assert response.json['detail'] == "No accounts found."
     assert response.json['status'] == "error"
-
-
-
-# # def test_update_existing_account(client_initialiser, db_initialiser, first_account):
-# #     client = client_initialiser
-# #     Account, Transaction, db_session = db_initialiser
-
-# #     # Get first_account id
-# #     first_account = Account.query.filter(Account.title=="first_account").all()[0]
-
-# #     response = client.post(f"/accounts/{first_account.id}/update", data={"title": "Updated Title"}, follow_redirects=True)
-
-# #     assert 'Successfully updated account info.' in response.data.decode()
-# #     assert Account.query.get(first_account.id).title == "Updated Title"
-# #     assert response.request.path == f"/accounts/{first_account.id}"
-
-# # def test_update_non_existent_account(client_initialiser):
-# #     client = client_initialiser
-
-# #     response = client.post("/accounts/999/update", data={"title": "New Title"}, follow_redirects=True)
-
-# #     assert 'Account not found.' in response.data.decode()
-
-# #     # Check that there were two redirect responses. 1-index, 2-showpage for first found account
-# #     assert len(response.history) == 2
-
-# #     # Check that the first request was to the index page.
-# #     assert response.history[1].request.path == "/accounts"
-
-# # def test_update_account_db_failure(client_initialiser, db_initialiser, first_account):
-# #     client = client_initialiser
-# #     Account, Transaction, db_session = db_initialiser
-
-# #     # Get first_account id
-# #     first_account = Account.query.filter(Account.title=="first_account").all()[0]
-
-# #     response1 = client.post(f"/accounts/{first_account.id}/update", data={"title": "Another Title too long"}, follow_redirects=True)
-
-# #     # assert 'Account title must be a string and max length of 15 characters.' in response1.data.decode()
-
-# #     # Check that the first request was to the show page of current account.
-# #     assert response1.request.path == f"/accounts/{first_account.id}"
-
-# #     response2 = client.post(f"/accounts/{first_account.id}/update", data={"title": 12345}, follow_redirects=True)
-
-# #     # assert 'Account title must be a string and max length of 15 characters.' in response2.data.decode()
-# #     # Check that the first request was to the show page of current account.
-# #     assert response2.request.path == f"/accounts/{first_account.id}"
-
-# # def test_delete_existing_account(client_initialiser, db_initialiser, first_account):
-# #     """Test deleting an existing account."""
-# #     client = client_initialiser
-# #     Account, Transaction, db_session = db_initialiser
-
-# #     # Get first_account id
-# #     first_account = Account.query.filter(Account.title=="first_account").first()
-
-# #     # Create a new account
-# #     num_accounts = Account.query.count()
-# #     client.post(f"/accounts/create", data={"title": "Main account"}, follow_redirects=True)
-# #     new_account = Account.query.filter(Account.title=="Main account").one()
-
-# #     # Check it was added to db
-# #     assert (num_accounts + 1) == Account.query.count()
-
-# #     # Remove account that was last added
-# #     response = client.post(f"/accounts/{new_account.id}/delete", follow_redirects=True)
-
-# #     # Ensure success message is displayed to user
-# #     assert 'Successfully deleted account.' in response.data.decode()
-
-# #     # Ensure that user is forwarded to show page of first account
-# #     assert response.request.path == f"/accounts/{first_account.id}"
-
-# # def test_delete_non_existent_account(client_initialiser, db_initialiser, first_account):
-# #     """Test trying to delete an account that doesn't exist."""
-# #     client = client_initialiser
-# #     Account, Transaction, db_session = db_initialiser
-
-# #     non_existent_id = 99999
-# #     response = client.post(f"/accounts/{non_existent_id}/delete", follow_redirects=True)
-
-# #     assert 'Could not find account.' in response.data.decode()
-
-# # def test_delete_last_account(client_initialiser, db_initialiser, first_account):
-# #     """Test trying to delete when only one account exists."""
-# #     client = client_initialiser
-# #     Account, Transaction, db_session = db_initialiser
-
-# #     # Get first_account id
-# #     first_account = Account.query.filter(Account.title=="first_account").first()
-
-# #     assert Account.query.count() == 1
-
-# #     response = client.post(f"/accounts/{first_account.id}/delete", follow_redirects=True)
-# #     assert 'Cannot delete the last account.' in response.data.decode()
-
-# # def test_delete_account_with_transactions(client_initialiser, db_initialiser, first_account):
-# #     client = client_initialiser
-# #     Account, Transaction, db_session = db_initialiser
-
-# #     new_account = Account(title="NewAccount", iban="DE123123")
-# #     for i in range(4):
-# #         new_account.transactions.append(Transaction(description=f"some{i}", category="Rent", amount=100))
-# #     db_session.add(new_account)
-# #     db_session.commit()
-
-# #     # Ensure 2 accounts and 4 transactions were added to db
-# #     assert Transaction.query.count() == 4
-# #     assert Account.query.count() == 2
-
-# #     # Delete new_account and ensure 1 account and 0 transactions are left
-# #     client.post(f"/accounts/{new_account.id}/delete", follow_redirects=True)
-
-# #     assert Account.query.count() == 1
-# #     assert Transaction.query.count() == 0

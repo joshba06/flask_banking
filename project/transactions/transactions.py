@@ -12,7 +12,7 @@ from werkzeug.wrappers import Response
 # Forms
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, DecimalField, SelectField
-from wtforms.validators import DataRequired
+from wtforms.validators import DataRequired, Length, AnyOf, ValidationError
 
 # Basics
 from datetime import datetime
@@ -29,12 +29,26 @@ transactions_bp = Blueprint('transactions', __name__,
                static_folder='../static',
                static_url_path='assets')
 
-
 # Define forms to be used in all controllers
+def not_zero(form, field):
+    if field.data == 0:
+        raise ValidationError('Amount cannot be zero or less than 0.')
+
 class TransactionForm(FlaskForm):
-    description = StringField("Transaction description", validators=[DataRequired()], render_kw={"placeholder": "Reference"})
-    category = SelectField("Category", choices = ["Category", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"], validators=[DataRequired()])
-    amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
+    description = StringField("Transaction description", validators=[DataRequired(), Length(max=80)], render_kw={"placeholder": "Reference"})
+    choices = ["Category", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]
+    category = SelectField("Category",
+                           choices = choices,
+                           validators=[
+                                DataRequired(),
+                                AnyOf(choices[1:])
+                               ])
+    amount = DecimalField("Amount",
+                          places=2,
+                          validators=[DataRequired(), not_zero],
+                          render_kw={"placeholder": "Amount"}
+                          )
+
     submit = SubmitField("Add")
 
 class SubaccountTransferForm(FlaskForm):
@@ -47,38 +61,57 @@ class SubaccountTransferForm(FlaskForm):
     submit = SubmitField("Add")
 
 
-@transactions_bp.route("/accounts/<int:account_id>/transactions/create", methods=["POST"])
+@transactions_bp.route("/accounts/<int:account_id>/transactions", methods=["POST"])
 def create(account_id):
 
-    account = Account.query.get(account_id)
-    if not account:
-        print(f"Cannot find account with id {account_id}")
-        flash('Account not found.', "error")
+    transaction_form = TransactionForm()
+    if not transaction_form.validate(): # Validates title max length, category(that it cannot be "Category" too), amount(can be string digits, cannot be <=0)
+        message = 'Form data is not valid.'
+        status = "error"
+    else:
+        account = Account.query.get(account_id)
+        if not account: # Validates account exists
+            message = 'Account not found.'
+            status = "error"
+        else:
+            status, message, _ = create_transaction(account=account,
+                                                 description=transaction_form.description.data,
+                                                 amount=transaction_form.amount.data,
+                                                 category=transaction_form.category.data)
+    flash(message, status)
+
+    if status == "success":
+        return redirect(url_for("accounts.show", account_id=account_id))
+    else:
         return redirect(url_for("accounts.index"))
 
-    transaction_form = TransactionForm()
 
-    # POST request was made and all TransactionForm fields have valid input
-    if transaction_form.validate_on_submit():
-        print("I am inside the TRANSACTION form")
-        new_transaction = Transaction(transaction_form.description.data, transaction_form.amount.data, transaction_form.category.data)
-        try:
-            account.transactions.append(new_transaction)
-            db_session.add(account)
-            db_session.commit()
-            new_transaction.calculate_saldo()
-            print(f"Added new transaction: {new_transaction}")
-            flash('Successfully created new transaction.', "success")
-            return redirect(url_for("accounts.show", account_id=account_id))
-        except Exception as e:
-            db_session.rollback()
-            print(f"Something went wrong while creating new transaction: {e}")
-            flash('Something went wrong while creating new transaction.', "error")
+def create_transaction(account, description, amount, category, date_booked=None):
+    '''date_booked not needed for web route (__init__ creates timestamp) but is needed for API request
+        date_booked should be a datetime object (api function needs to convert string (json) to datetime)
+    '''
 
-    # Request is not POST or form fields have invalid input
-    else:
-        flash('Invalid form submission.', "error")
-        return redirect(url_for("accounts.show", account_id=account_id))
+    try:
+        # Create new transaction and link to account
+        transaction = Transaction(description=description, amount=amount, category=category, date_booked=date_booked)
+        account.transactions.append(transaction)
+        db_session.add(account)
+        db_session.commit()
+
+        # Calculate saldo for transaction
+        transaction.calculate_saldo()
+
+        print(f"Successfully created new transaction: {transaction}")
+        return "success", "Successfully created new transaction.", transaction.id
+
+    except ValueError as ve: # This will capture all ValueErrors raised in __init__
+        db_session.rollback()
+        print(f"Error: {ve}") # Display the actual error message from __init__
+        return "error", f"{ve}"
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while creating new account: {e}")
+        return "error", 'Error occurred while creating the account.'
 
 @transactions_bp.route("/accounts/<int:sender_account_id>/transactions/create_subaccount_transfer", methods=["POST"])
 def create_subaccount_transfer(sender_account_id):
@@ -185,72 +218,3 @@ def download_csv():
     except:
         flash('Successfully went wrong while downloading csv.', "error")
         return redirect(url_for("accounts.show", account_id=1))
-
-
-
-
-
-# ## API endpoints
-def transactions_to_json(transaction_list):
-    json_transactions = []
-    for transaction in transaction_list:
-        transaction_dict = {
-            "id": str(transaction.id),
-            "amount": str(transaction.amount),
-            "saldo": str(transaction.saldo),
-            "description": transaction.description,
-            "category": transaction.category,
-            "date_booked": transaction.date_booked.isoformat()
-        }
-        json_transactions.append(transaction_dict)
-    return json_transactions
-
-# Read all transactions
-def read_all():
-    return transactions_to_json(Transaction.query.all())
-
-# Read single transaction
-def read_one(id):
-    data = Transaction.query.get(id)
-    if data:
-        return transactions_to_json([data])
-    else:
-        abort(
-            404, f"Transaction with id {id} not found"
-        )
-
-# Create a transaction
-def create(transaction):
-    transaction = dict(description=transaction.get("description"),amount=transaction.get("amount"), category=transaction.get("category"), date_booked=transaction.get("date_booked"))
-
-    # Validate request data
-    if transaction["description"] == None or len(transaction["description"]) > 80:
-        return jsonify({'error': 'Invalid or missing description'}), 400
-
-    if not isinstance(transaction["amount"], (int, float)):
-        return jsonify({'error': 'Invalid or missing amount'}), 400
-
-    if transaction["category"] not in ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
-        return jsonify({'error': 'Invalid category value'}), 400
-
-    if transaction["date_booked"] != None and transaction["date_booked"] != "None":
-        try:
-            transaction["date_booked"] = datetime.fromisoformat(transaction["date_booked"].replace('Z', '+00:00'))
-        except:
-            return jsonify({'error': 'Could not convert date_booked to datetime object,'}), 400
-
-    # Create a new Transaction object
-    new_transaction = Transaction(**transaction)
-    db_session.add(new_transaction)
-    db_session.commit()
-    new_transaction.calculate_saldo()
-
-    # Return a success response
-    return jsonify({
-        'id': new_transaction.id,
-        'description': new_transaction.description,
-        'amount': float(new_transaction.amount),
-        'category': new_transaction.category,
-        'date_booked': new_transaction.date_booked.strftime('%Y-%m-%dT%H:%M:%SZ'),
-        'saldo': float(new_transaction.saldo)
-    }), 201

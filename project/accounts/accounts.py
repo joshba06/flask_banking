@@ -10,7 +10,7 @@ from pprint import pprint
 # Forms
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, DateField, SelectField, BooleanField
-from wtforms.validators import DataRequired, Length, ValidationError, Regexp, InputRequired
+from wtforms.validators import DataRequired, Length
 
 
 # Models
