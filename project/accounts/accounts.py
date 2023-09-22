@@ -60,6 +60,10 @@ def index():
 
 @accounts_bp.route("/accounts/<int:account_id>", methods=["GET", "POST"])
 def show(account_id, transactions_filter=None):
+
+    # Importing form that relies on Account model to make sure import happens in correct order
+    from project.transactions.transactions import SubaccountTransferForm
+
     account = Account.query.get(account_id)
     all_accounts = Account.query.all()
     transactions_filter = request.args.get('transactions_filter')
@@ -106,7 +110,7 @@ def show(account_id, transactions_filter=None):
     # Calculate sum to be displayed in last table row
     transactions_table_sum = sum([transaction.amount for transaction in transactions])
 
-    # New transaction frorm
+    # New transaction form
     transaction_form = TransactionForm()
     subaccount_transfer_form = SubaccountTransferForm()
 

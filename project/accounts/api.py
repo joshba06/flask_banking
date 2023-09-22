@@ -3,6 +3,7 @@ from flask import jsonify
 
 # Models
 from project.models import Account
+print("Initialising API")
 from project.accounts.accounts import create_account, generate_unique_iban
 from project.db import db_session
 

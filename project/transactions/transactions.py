@@ -48,14 +48,13 @@ class TransactionForm(FlaskForm):
                           validators=[DataRequired(), not_zero],
                           render_kw={"placeholder": "Amount"}
                           )
-
     submit = SubmitField("Add")
 
 class SubaccountTransferForm(FlaskForm):
     description = StringField("Subaccount transfer description", validators=[DataRequired()], render_kw={"placeholder": "Reference"})
     choices = ["Recipient"]
-    for account in Account.query.all():
-        choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})")
+    # for account in Account.query.all():
+    #     choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})")
     recipient = SelectField("Recipient", choices = choices, validators=[DataRequired()], render_kw={"placeholder": "Recipient"})
     amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
     submit = SubmitField("Add")
@@ -84,7 +83,6 @@ def create(account_id):
         return redirect(url_for("accounts.show", account_id=account_id))
     else:
         return redirect(url_for("accounts.index"))
-
 
 def create_transaction(account, description, amount, category, date_booked=None):
     '''date_booked not needed for web route (__init__ creates timestamp) but is needed for API request
@@ -121,7 +119,11 @@ def create_subaccount_transfer(sender_account_id):
         flash("Could not find sender account.", "error")
         return redirect(url_for("accounts.index"))
 
+    # Create subaccount transfer form and populate "choices" field. This is to
     subaccount_transfer_form = SubaccountTransferForm()
+
+
+
     recipient_account_title = subaccount_transfer_form.recipient.data.split("(")[0].strip()
     recipient_account_fractional_iban = subaccount_transfer_form.recipient.data.split("(")[1].strip()
     recipient_account_fractional_iban = recipient_account_fractional_iban.split(")")[0].strip()

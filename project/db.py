@@ -19,8 +19,9 @@ Base.query = db_session.query_property()
 def init_db():
     from project.models import Account, Transaction
     Base.metadata.create_all(bind=engine)
-    # print(f"Continuing db setup with db session at: {db_session.get_bind()}")
-    # print(f"Table names: {Base.metadata.tables.keys()}")
+    
+    print(f"Continuing db setup with db session at: {db_session.get_bind()}")
+    print(f"Table names: {Base.metadata.tables.keys()}")
 
     if app.app.config["TESTING"] is False:
         print("__________[DB] NORMAL SETUP__________")
