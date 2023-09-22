@@ -66,8 +66,8 @@ class Transaction(Base):
     account_id = Column(Integer, ForeignKey('accounts.id'), nullable=False)
 
     def __init__(self, description, amount, category, date_booked=None): # No account_id validation because it happens on db level
-        if not isinstance(description, str) or len(description) > 80:
-            raise ValueError("The description variable must be a string with less than 80 characters.")
+        if not isinstance(description, str) or (len(description.strip()) > 80 or len(description.strip()) == 0):
+            raise ValueError("The description variable must be a string with more than 0 and less than 80 characters.")
         else:
             self.description = description
 

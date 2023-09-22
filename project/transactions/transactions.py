@@ -107,11 +107,11 @@ def create_transaction(account, description, amount, category, date_booked=None)
     except ValueError as ve: # This will capture all ValueErrors raised in __init__
         db_session.rollback()
         print(f"Error: {ve}") # Display the actual error message from __init__
-        return "error", f"{ve}"
+        return "error", f"{ve}", None
     except Exception as e:
         db_session.rollback()
         print(f"Error occurred while creating new account: {e}")
-        return "error", 'Error occurred while creating the account.'
+        return "error", 'Error occurred while creating the account.', None
 
 @transactions_bp.route("/accounts/<int:sender_account_id>/transactions/create_subaccount_transfer", methods=["POST"])
 def create_subaccount_transfer(sender_account_id):

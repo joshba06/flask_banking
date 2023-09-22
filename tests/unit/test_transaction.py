@@ -19,7 +19,7 @@ def test_invalid_long_description(model_initialiser):
     # Test that a ValueError is raised when the description is too long
     _, Transaction = model_initialiser
 
-    with pytest.raises(ValueError, match="The description variable must be a string with less than 80 characters."):
+    with pytest.raises(ValueError, match="The description variable must be a string with more than 0 and less than 80 characters."):
         Transaction("A" * 81, 100.00, "Salary")
 
 def test_invalid_amount_type(model_initialiser):
@@ -82,7 +82,11 @@ def test_create_transaction_invalid_description(valid_account):
 
     status, message, _ = create_transaction(valid_account, "A" * 81, 100, "Rent")
     assert status == "error"
-    assert message == "The description variable must be a string with less than 80 characters."
+    assert message == "The description variable must be a string with more than 0 and less than 80 characters."
+
+    status, message, _ = create_transaction(valid_account, "     ", 100, "Rent")
+    assert status == "error"
+    assert message == "The description variable must be a string with more than 0 and less than 80 characters."
 
 def test_create_transaction_invalid_amount(valid_account):
     from project.transactions.transactions import create_transaction

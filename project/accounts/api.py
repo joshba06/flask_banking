@@ -18,12 +18,12 @@ def accounts_to_json(accounts_list):
         json_accounts.append(account_dict)
     return json_accounts
 
-def api_get_one_account(id):
+def api_get_one_account(account_id):
 
-    if not id:
+    if not account_id:
         return jsonify({"status": "error", "detail": "This was unexpected. Swagger should have handled this..."}), 400
 
-    account = Account.query.get(id)
+    account = Account.query.get(account_id)
     if not account:
         return jsonify({
             "detail": "Account not found.",
@@ -64,12 +64,12 @@ def api_create_account(account):
     else:
         return jsonify({"status": "error", "detail": message}), 400
 
-def api_delete_account(id):
+def api_delete_account(account_id):
 
-    if not id:
+    if not account_id:
         return jsonify({"status": "error", "detail": "This was unexpected. Swagger should have handled this..."}), 400
 
-    account_to_delete = Account.query.get(id)
+    account_to_delete = Account.query.get(account_id)
     if not account_to_delete:
         return jsonify({"detail": "Account not found.", "status": "error"}), 404
 

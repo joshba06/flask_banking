@@ -26,12 +26,16 @@ components:
       properties:
         description:
           type: string
+          minLength: 1
           maxLength: 80
-          description: The description of the transaction (max 80 characters).
+          description: The description of the transaction (min 1, max 80 characters).
           example: Tesco groceries
         amount:
           type: number
           format: float
+          not:
+            enum:
+              - 0
           description: The transaction amount (may be positive or negative, not 0).
           example: 50.00
         category:

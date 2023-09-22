@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timedelta
 
 @pytest.fixture()
 def first_account(db_initialiser, client_initialiser):
@@ -13,25 +13,39 @@ def first_account(db_initialiser, client_initialiser):
     return account
 
 @pytest.fixture()
-def valid_and_invalid_transaction_data():
+def valid_and_invalid_api_data():
     data = {
-        "valid": {
-            "description": ["Valid", "Test123", "123"],
-            "amount": [-50, 0,1, 123, 999],
-            "category": ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]
+    'description': {
+        'valid': ["Valid", "Test123", "123"],
+        'invalid': [
+            {'value': "A"*81, 'error_message': "is too long - 'description'"}, #swagger generated message
+            {'value': "", 'error_message': "is too short - 'description'"}, #swagger generated message
+            {'value': "   ", 'error_message': "The description variable must be a string with more than 0 and less than 80 characters."}, #model generated
+            {'value': None, 'error_message': "is not of type 'string' - 'description'"} #swagger generated message
+        ]
         },
-        "invalid": {
-            "description": ["A"*81, None, ""],
-            "amount": [0, None, "invalid", ""],
-            "category": ["Transfer", None, 123, ""] # Transfer is only valid for subaccount_transfer!
+    'amount': {
+        'valid': [-50, 0.1, 123, 999],
+        'invalid': [
+            {'value': 0, 'error_message': "0 should not be valid under"},
+            {'value': "", 'error_message': "'' is not of type 'number' - 'amount'"},
+            {'value': None, 'error_message': "None is not of type 'number' - 'amount'"},
+            {'value': "invalid", 'error_message': "'invalid' is not of type 'number' - 'amount'"}
+        ]
+        },
+    'category': {
+        'valid': ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"],
+        'invalid': [
+            {'value': "Transfer", 'error_message': "'Transfer' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"}, # Transfer is only valid for subaccount_transfer!
+            {'value': "", 'error_message': "'' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"},
+            {'value': None, 'error_message': "None is not of type 'string' - 'category'"},
+            {'value': "123", 'error_message': "'123' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"},
+            {'value': "Books", 'error_message': "'Books' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"}
+        ]
         }
     }
-    messages = {
-        "description": "Ask swagger",
-        "amount": "Ask swagger",
-        "category": "Ask swagger",
-    }
-    return data, messages
+
+    return data
 
 ## Route tests
 # create route (simulating form submission)
@@ -207,52 +221,165 @@ def test_api_create_transaction_non_existent_account(client_initialiser):
         "amount": 50.0,
         "category": "Groceries",
     })
-    print(response.json)
     assert response.status_code == 400
     assert response.json["detail"] == "Account not found"
 
-# def test_api_create_transaction_invalid(first_account, client_initialiser, valid_and_invalid_transaction_data):
-#     data, messages = valid_and_invalid_transaction_data
-#     client = client_initialiser
+def test_api_create_transaction_invalid(first_account, client_initialiser, valid_and_invalid_api_data):
+    # Invalid body data should produce automatic swagger validation error + message (see swagger.yml for request requirements)
 
-#     # Test descriptions
-#     for description in data["invalid"]["descriptions"]:
-#         response = client.post('/api/transactions', json={
-#             "account_id": first_account.id,
-#             "description": description,
-#             "amount": 50.0,
-#             "category": "Groceries"
-#         })
-#         assert response.status_code == 201
-#         assert response.json["status"] == "success"
-#         assert response.json["detail"] == "Successfully created new transaction."
+    data = valid_and_invalid_api_data
+    client = client_initialiser
 
-# def test_api_create_transaction_valid(first_account, client_initialiser, valid_and_invalid_transaction_data):
-#     data, messages = valid_and_invalid_transaction_data
-#     client = client_initialiser
+    for description in data["description"]["invalid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": description["value"],
+            "amount": 50.0,
+            "category": "Groceries"
+        })
+        assert response.status_code == 400
+        assert description['error_message'] in response.json["detail"]
 
-#     id_counter = 1
+    for amount in data["amount"]["invalid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": "ValidDescription",
+            "amount": amount["value"],
+            "category": "Groceries"
+        })
 
-#     # Test descriptions
-#     for description in data["valid"]["descriptions"]:
-#         response = client.post('/api/transactions', json={
-#             "account_id": first_account.id,
-#             "description": description,
-#             "amount": 50.0,
-#             "category": "Groceries"
-#         })
-#         assert response.status_code == 201
-#         assert response.json["status"] == "success"
-#         assert response.json["detail"] == "Successfully created new transaction."
-#         assert response.json["description"] == description
-#         assert response.json["amount"] == 50.0
-#         assert response.json["category"] == "Groceries"
-#         assert response.json["transaction_id"] == id_counter
-#         assert response.json["date_booked"] == datetime.today.date()
+        assert response.status_code == 400
+        assert amount['error_message'] in response.json["detail"]
 
-#     # Test Amounts
+    for category in data["category"]["invalid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": "ValidDescription",
+            "amount": 50,
+            "category": category["value"]
+        })
 
-#     # Test Categories
+        assert response.status_code == 400
+        assert category['error_message'] in response.json["detail"]
+
+# X Add date_booked tests after it was changed to time_booked. Include this data in valid_and_invalid_api_data
+def test_api_create_date_booked():
+    assert 1 == 2
+
+def test_api_create_transaction_valid(first_account, client_initialiser, valid_and_invalid_api_data):
+    data = valid_and_invalid_api_data
+    client = client_initialiser
+
+    for description in data["description"]["valid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": description,
+            "amount": 50.0,
+            "category": "Groceries"
+        })
+        assert response.status_code == 201
+        assert "Successfully created new transaction" in response.json["detail"]
+
+    for amount in data["amount"]["valid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": "ValidDescription",
+            "amount": amount,
+            "category": "Groceries"
+        })
+        print(response.data.decode())
+        assert response.status_code == 201
+        assert "Successfully created new transaction" in response.json["detail"]
+
+    for category in data["category"]["valid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": "ValidDescription",
+            "amount": 50,
+            "category": category
+        })
+
+        assert response.status_code == 201
+        assert "Successfully created new transaction" in response.json["detail"]
+
+def test_api_create_no_date_provided(first_account, client_initialiser, valid_and_invalid_api_data):
+    # data = valid_and_invalid_api_data
+    # client = client_initialiser
+
+    # response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+    #     "account_id": first_account.id,
+    #     "description": "ValidDescription",
+    #     "amount": 50,
+    #     "category": "Rent"
+    # })
+
+    # assert response.status_code == 201
+    # assert "Successfully created new transaction" in response.json["detail"]
+
+    # # Ensure date and time are within the last 5 minutes from current time
+    # date_booked = datetime.fromisoformat(response.json["date_booked"].replace('Z', '+00:00'))
+
+    # time_5_minutes_ago = datetime.now() - timedelta(minutes=5)
+    # assert time_5_minutes_ago <= date_booked
+    # assert date_booked <= datetime.now()
+
+    # print(time_5_minutes_ago)
+    # print(type(date_booked))
+
+    assert 1 == 2
+
+
+
+def test_api_create_multiple_transactions_saldo(first_account, client_initialiser, valid_and_invalid_api_data):
+    data = valid_and_invalid_api_data
+    client = client_initialiser
+
+    # Ensure no transactions were added to account
+    assert first_account.transactions.count() == 0
+
+    amounts = [50, 100, 25, 12, 99]
+    for i in range(5):
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": f"Transaction {i}",
+            "amount": amounts[i],
+            "category": "Rent"
+        })
+        assert response.status_code == 201
+        assert "Successfully created new transaction" in response.json["detail"]
+
+        # Ensure each transaction has correct saldo
+        assert response.json["saldo"] == sum(amounts[:i+1])
+
+def test_api_create_negative_saldo_possible(first_account, client_initialiser, valid_and_invalid_api_data):
+    data = valid_and_invalid_api_data
+    client = client_initialiser
+
+    # Ensure no transactions were added to account
+    assert first_account.transactions.count() == 0
+
+    amounts = [50, 100, -300, -100]
+    for i in range(4):
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": f"Transaction {i}",
+            "amount": amounts[i],
+            "category": "Rent"
+        })
+        assert response.status_code == 201
+        assert "Successfully created new transaction" in response.json["detail"]
+
+        # Ensure each transaction has correct saldo
+        assert response.json["saldo"] == sum(amounts[:i+1])
+    assert first_account.transactions.all()[-1].saldo == -250
+
+
+
+# create subaccount transfer
+
+def test_api_create_transfer_invalid():
+    pass
+
 
 
 
@@ -285,13 +412,8 @@ def test_api_create_transaction_non_existent_account(client_initialiser):
 
 ## API tests
 # Add fixture for same invalid / valid data as in web routes
-# Check dates can be added and are converted correctly
+
 # Saldo is added correctly to response
-
-
-# # Integration tests
-# # Check if sum of displayed transactions is correct by implementing certain class on document
-# # Check if number and value of transactions is displayed correctly
 
 
 # # Functional
