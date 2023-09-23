@@ -52,11 +52,15 @@ category
 !- a subaccount can only have "Transfer" as a category.
 
 
-time_booked
-- (DateTime)
-- Store time in db as UTC
-- Display time in local time
-- Convert time provided by API request to UTC
+utc_datetime_booked
+- DateTime
+- Store time in db as UTC (without timezone information, since all datetime objects are stored in UTC)
+- API:
+  - Return time with UTC format information
+  - Post request for new transaction must have datetime as isoformat string in UTC format (converted to datetime object in API endpoint)
+- Webroute:
+  - Form does not allow time selection, thus default server time is used for new transaction
+  - Transactions are displayed with date, not time. Time is only used for sorting (which is all in UTC so no conversion needed)
 
 
 

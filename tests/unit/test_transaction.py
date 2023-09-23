@@ -2,6 +2,7 @@ import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pprint import pprint
+import pytz
 
 # # New tests to be added
 # # Group my month tests are needed if the function will remain.
@@ -12,8 +13,9 @@ def test_default_date_booked(model_initialiser):
     _, Transaction = model_initialiser
 
     transaction = Transaction("Test Transaction", 100.00, "Salary")
-    assert isinstance(transaction.date_booked, datetime)
-    assert transaction.date_booked.date() == datetime.now().date()
+    assert isinstance(transaction.utc_datetime_booked, datetime)
+    # Ensure dates match. Times do not necessarily match due to UTC time stored in db checking against local time
+    assert transaction.utc_datetime_booked.date() == datetime.now().date()
 
 def test_invalid_long_description(model_initialiser):
     # Test that a ValueError is raised when the description is too long
@@ -35,8 +37,11 @@ def test_invalid_date_booked_type(model_initialiser):
     # Test that a ValueError is raised when date_booked is not of type datetime
     _, Transaction = model_initialiser
 
-    with pytest.raises(ValueError, match="date_booked is not of type datetime"):
-        Transaction("Test Transaction", 100.00, "Salary", date_booked="invalid_date")
+    with pytest.raises(ValueError, match="utc_datetime_booked is not of type datetime."):
+        Transaction("Test Transaction", 100.00, "Salary", utc_datetime_booked="invalid_date")
+
+    with pytest.raises(ValueError, match="utc_datetime_booked is not in UTC."):
+        Transaction("Test Transaction", 100.00, "Salary", utc_datetime_booked=datetime(2023, 9, 1, 12, 0, 0))
 
 def test_invalid_category(model_initialiser):
     _, Transaction = model_initialiser
@@ -51,11 +56,13 @@ def test_valid_transaction(model_initialiser):
     amount = 100.50
     category = "Salary"
     date_booked = datetime(2023, 9, 1, 12, 0, 0)
-    transaction = Transaction(description, amount, category, date_booked)
+    utc_date_booked = date_booked.replace(tzinfo=pytz.UTC)
+
+    transaction = Transaction(description, amount, category, utc_date_booked)
 
     assert transaction.description == description
     assert transaction.amount == Decimal("100.50")
-    assert transaction.date_booked == date_booked
+    assert transaction.utc_datetime_booked == utc_date_booked
     assert transaction.category == category
 
 
@@ -105,14 +112,21 @@ def test_create_transaction_invalid_category(valid_account):
 def test_create_transaction_invalid_date_booked(valid_account):
     from project.transactions.transactions import create_transaction
 
-    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", "2023-09-15")
+    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", "2023-09-13T14:00:00Z")
     assert status == "error"
-    assert message == "date_booked is not of type datetime."
+    assert message == "utc_datetime_booked is not of type datetime."
+
+    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", datetime(2023, 9, 1, 12, 0, 0))
+    assert status == "error"
+    assert message == "utc_datetime_booked is not in UTC."
 
 def test_create_transaction_valid_date_booked(valid_account):
     from project.transactions.transactions import create_transaction
 
-    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", datetime(2023, 9, 1, 12, 0, 0))
+    date_booked = datetime(2023, 9, 1, 12, 0, 0)
+    utc_date_booked = date_booked.replace(tzinfo=pytz.UTC)
+
+    status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", utc_date_booked)
     assert status == "success"
     assert message == "Successfully created new transaction."
 

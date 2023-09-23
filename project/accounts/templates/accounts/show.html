@@ -173,7 +173,7 @@ Joshba06 Banking
         {% else %}
           {% for transaction in transactions %}
             <tr>
-              <td>{{ transaction.date_booked.strftime("%d/%m/%y") }}</td>
+              <td>{{ transaction.utc_datetime_booked.strftime("%d/%m/%y") }}</td>
               <td>{{ transaction.description }}</td>
               <td>{{ transaction.category }}</td>
               <td class="text-right">{{ format_currency(transaction.amount) }} €</td>

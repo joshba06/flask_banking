@@ -43,10 +43,10 @@ components:
           enum: ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]
           description: The transaction category.
           example: Groceries
-        date_booked:
+        utc_datetime_booked:
           type: string
           format: date-time
-          description: The date the transaction was booked (ISO 8601 format). Optional; if not provided, the current date and time will be used.
+          description: The date the transaction was booked in UTC (ISO 8601 format). Optional; if not provided, the current date and time will be used.
           example: 2023-09-04T12:00:00Z
   parameters:
     account_id:
@@ -225,10 +225,10 @@ paths:
                       type: string
                       description: The transaction category.
                       example: Groceries
-                    date_booked:
+                    utc_datetime_booked:
                       type: string
                       format: date-time
-                      description: The date the transaction was booked (ISO 8601 format).
+                      description: The date the transaction was booked in UTC (ISO 8601 format).
                       example: 2023-09-04T12:00:00Z
                     saldo:
                       type: number

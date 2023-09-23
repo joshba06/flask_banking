@@ -1,4 +1,5 @@
 from datetime import datetime, date
+import pytz
 from sqlalchemy import desc, func
 import decimal
 from pprint import pprint
@@ -62,10 +63,10 @@ class Transaction(Base):
     amount = Column(Numeric(precision=10, scale=2), nullable=False, index = False, unique = False)
     saldo = Column(Numeric(precision=10, scale=2), nullable=True, index = False, unique = False)
     category = Column(String(20), nullable=False)
-    date_booked = Column(DateTime, nullable=False)
+    utc_datetime_booked = Column(DateTime, nullable=False)
     account_id = Column(Integer, ForeignKey('accounts.id'), nullable=False)
 
-    def __init__(self, description, amount, category, date_booked=None): # No account_id validation because it happens on db level
+    def __init__(self, description, amount, category, utc_datetime_booked=None): # No account_id validation because it happens on db level
         if not isinstance(description, str) or (len(description.strip()) > 80 or len(description.strip()) == 0):
             raise ValueError("The description variable must be a string with more than 0 and less than 80 characters.")
         else:
@@ -80,23 +81,25 @@ class Transaction(Base):
             raise ValueError("Invalid category value.")
         self.category = category
 
-        if date_booked == None:
-            self.date_booked = datetime.now()
+        if utc_datetime_booked == None:
+            self.utc_datetime_booked = datetime.utcnow()
         else:
-            if not isinstance(date_booked, datetime):
-                raise ValueError("date_booked is not of type datetime.")
+            if not isinstance(utc_datetime_booked, datetime):
+                raise ValueError("utc_datetime_booked is not of type datetime.")
+            elif utc_datetime_booked.tzinfo != pytz.utc:
+                raise ValueError("utc_datetime_booked is not in UTC.")
             else:
-                self.date_booked = date_booked
+                self.utc_datetime_booked = utc_datetime_booked
         self.saldo = None
 
     def __repr__(self):
-        return "[{}] description: '{}', category: {}, amount: {:.2f}, saldo: {}".format(self.date_booked, self.description, self.category, self.amount, self.saldo)
+        return "[{}] description: '{}', category: {}, amount: {:.2f}, saldo: {}".format(self.utc_datetime_booked, self.description, self.category, self.amount, self.saldo)
 
     def calculate_saldo(self):
         try:
             # Calculate the saldo by summing up the "amount" of older transactions
             saldo_previous_transactions = db_session.query(func.sum(Transaction.amount)).filter(
-                Transaction.date_booked < self.date_booked,
+                Transaction.utc_datetime_booked < self.utc_datetime_booked,
                 Transaction.account_id == self.account_id
             ).scalar()
 
@@ -143,19 +146,19 @@ class Transaction(Base):
             else:
                 transactions = Transaction.query.filter(Transaction.account_id==account_id, Transaction.description.ilike("%{}%".format(transaction_description))).all()
         else:
-            transactions = Transaction.query.filter(Transaction.account_id==account_id).order_by(desc(Transaction.date_booked)).all()
+            transactions = Transaction.query.filter(Transaction.account_id==account_id).order_by(desc(Transaction.utc_datetime_booked)).all()
 
         # Filter results for dates
         if start_date != None and end_date != None:
             start_date = start_date
             end_date = end_date
-            filtered_transactions = [transaction for transaction in transactions if (transaction.date_booked.date() >= start_date and transaction.date_booked.date() <= end_date)]
+            filtered_transactions = [transaction for transaction in transactions if (transaction.utc_datetime_booked.date() >= start_date and transaction.utc_datetime_booked.date() <= end_date)]
         elif start_date != None:
             start_date = start_date
-            filtered_transactions = [transaction for transaction in transactions if transaction.date_booked.date() >= start_date]
+            filtered_transactions = [transaction for transaction in transactions if transaction.utc_datetime_booked.date() >= start_date]
         elif end_date != None:
             end_date = end_date
-            filtered_transactions = [transaction for transaction in transactions if transaction.date_booked.date() <= end_date]
+            filtered_transactions = [transaction for transaction in transactions if transaction.utc_datetime_booked.date() <= end_date]
         else:
             filtered_transactions = transactions
 
@@ -164,7 +167,7 @@ class Transaction(Base):
             temp = [transaction for transaction in filtered_transactions if transaction.category == category]
             filtered_transactions = temp
 
-        sorted_filtered_transactions = sorted(filtered_transactions, key=lambda x: x.date_booked, reverse=True)
+        sorted_filtered_transactions = sorted(filtered_transactions, key=lambda x: x.utc_datetime_booked, reverse=True)
 
         return sorted_filtered_transactions
 
@@ -180,14 +183,14 @@ class Transaction(Base):
         data = {}
         for transaction in transactions:
 
-            if transaction.date_booked.year not in data.keys():
-                data[transaction.date_booked.year] = {}
-            if transaction.date_booked.month not in data[transaction.date_booked.year].keys():
-                data[transaction.date_booked.year][transaction.date_booked.month] = {"income": 0, "expenses": 0, "total": 0}
+            if transaction.utc_datetime_booked.year not in data.keys():
+                data[transaction.utc_datetime_booked.year] = {}
+            if transaction.utc_datetime_booked.month not in data[transaction.utc_datetime_booked.year].keys():
+                data[transaction.utc_datetime_booked.year][transaction.utc_datetime_booked.month] = {"income": 0, "expenses": 0, "total": 0}
             if transaction.amount >= 0:
-                data[transaction.date_booked.year][transaction.date_booked.month]["income"] += transaction.amount
+                data[transaction.utc_datetime_booked.year][transaction.utc_datetime_booked.month]["income"] += transaction.amount
             elif transaction.amount < 0:
-                data[transaction.date_booked.year][transaction.date_booked.month]["expenses"] += transaction.amount
-            data[transaction.date_booked.year][transaction.date_booked.month]["total"] += transaction.amount
+                data[transaction.utc_datetime_booked.year][transaction.utc_datetime_booked.month]["expenses"] += transaction.amount
+            data[transaction.utc_datetime_booked.year][transaction.utc_datetime_booked.month]["total"] += transaction.amount
 
         return data

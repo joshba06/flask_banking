@@ -32,7 +32,7 @@ transactions_bp = Blueprint('transactions', __name__,
 # Define forms to be used in all controllers
 def not_zero(form, field):
     if field.data == 0:
-        raise ValidationError('Amount cannot be zero or less than 0.')
+        raise ValidationError('Amount cannot be zero')
 
 class TransactionForm(FlaskForm):
     description = StringField("Transaction description", validators=[DataRequired(), Length(max=80)], render_kw={"placeholder": "Reference"})
@@ -84,14 +84,18 @@ def create(account_id):
     else:
         return redirect(url_for("accounts.index"))
 
-def create_transaction(account, description, amount, category, date_booked=None):
-    '''date_booked not needed for web route (__init__ creates timestamp) but is needed for API request
-        date_booked should be a datetime object (api function needs to convert string (json) to datetime)
+def create_transaction(account, description, amount, category, utc_datetime_booked=None):
+    '''
+    :param account: account instance
+    :param description: Description of transaction
+    :param amount: Transaction amount
+    :param category: TO BE DISCUSSED
+    :param utc_datetime_booked: datetime object in UTC timezone format
     '''
 
     try:
         # Create new transaction and link to account
-        transaction = Transaction(description=description, amount=amount, category=category, date_booked=date_booked)
+        transaction = Transaction(description=description, amount=amount, category=category, utc_datetime_booked=utc_datetime_booked)
         account.transactions.append(transaction)
         db_session.add(account)
         db_session.commit()
@@ -204,7 +208,7 @@ def download_csv():
             for transaction in transactions:
                 writer.writerow((
                     transaction.account.iban,
-                    transaction.date_booked.strftime("%d/%m/%Y"),
+                    transaction.utc_datetime_booked.strftime("%d/%m/%Y"),
                     transaction.description,
                     f"{transaction.amount}€",
                     f"{transaction.saldo}€"

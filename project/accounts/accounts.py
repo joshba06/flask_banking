@@ -105,7 +105,7 @@ def show(account_id, transactions_filter=None):
     # Extract saldos for accounts
     account_saldos = {}
     for account in all_accounts:
-        account_saldos[account.id] = account.transactions.order_by(Transaction.date_booked.desc()).first().saldo if account.transactions.count() > 0 else 0
+        account_saldos[account.id] = account.transactions.order_by(Transaction.utc_datetime_booked.desc()).first().saldo if account.transactions.count() > 0 else 0
 
     # Calculate sum to be displayed in last table row
     transactions_table_sum = sum([transaction.amount for transaction in transactions])
