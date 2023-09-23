@@ -52,7 +52,8 @@ def valid_and_invalid_transaction_data():
             {'value': "", 'error_message': "'' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"},
             {'value': None, 'error_message': "None is not of type 'string' - 'category'"},
             {'value': "123", 'error_message': "'123' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"},
-            {'value': "Books", 'error_message': "'Books' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"}
+            {'value': "Books", 'error_message': "'Books' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"},
+            {'value': "Category", 'error_message': "'Category' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"}
         ]
         },
     'utc_datetime_booked': {
@@ -72,90 +73,6 @@ def valid_and_invalid_transaction_data():
 
     return data
 
-## Route tests
-# create route (simulating form submission)
-def test_invalid_form_data(client_initialiser, first_account):
-    client = client_initialiser
-
-    invalid_descriptions = ["A"*81, "", None]
-    invalid_amounts = ["Invalid", None, 0]
-    invalid_categories = ["Transfer", "Category", "Sports", "", None]
-
-    for description in invalid_descriptions:
-        response = client.post(f"/accounts/{first_account.id}/transactions", data={
-            "description": description,
-            "amount": 123,
-            "category": "Rent"
-        }, follow_redirects=True)
-        assert 'Form data is not valid.' in response.data.decode()
-        assert response.request.path == f"/accounts/{first_account.id}"
-
-    for amount in invalid_amounts:
-        response = client.post(f"/accounts/{first_account.id}/transactions", data={
-            "description": "Somedesc",
-            "amount": amount,
-            "category": "Rent"
-        }, follow_redirects=True)
-        assert 'Form data is not valid.' in response.data.decode()
-        assert response.request.path == f"/accounts/{first_account.id}"
-
-    for category in invalid_categories:
-        response = client.post(f"/accounts/{first_account.id}/transactions", data={
-            "description": "Somedesc",
-            "amount": 123,
-            "category": category
-        }, follow_redirects=True)
-        assert 'Form data is not valid.' in response.data.decode()
-        assert response.request.path == f"/accounts/{first_account.id}"
-
-def test_create_transaction_for_non_existent_account(client_initialiser, first_account):
-    #Test trying to create a transaction for a non-existent account
-    client = client_initialiser
-
-    response = client.post("/accounts/999/transactions", data={
-        "description": "Somedesc",
-        "amount": 123,
-        "category": "Rent"
-    }, follow_redirects=True)
-
-    assert 'Account not found.' in response.data.decode()
-
-def test_valid_data(client_initialiser, first_account):
-    client = client_initialiser
-
-    valid_descriptions = ["Test", "A"]
-    valid_amounts = [123, "123", 1, 0.1, -70, 999]
-    valid_categories = ["Rent", "Utilities"] #-> "Transfer" category isnt available in form and is thus only checked for API through __ini__ method
-
-
-    for description in valid_descriptions:
-        response = client.post(f"/accounts/{first_account.id}/transactions", data={
-            "description": description,
-            "amount": 123,
-            "category": "Rent"
-        }, follow_redirects=True)
-        assert 'Successfully created new transaction.' in response.data.decode()
-        assert response.request.path == f"/accounts/{first_account.id}"
-
-    for amount in valid_amounts:
-        response = client.post(f"/accounts/{first_account.id}/transactions", data={
-            "description": "Somedesc",
-            "amount": amount,
-            "category": "Rent"
-        }, follow_redirects=True)
-        assert 'Successfully created new transaction.' in response.data.decode()
-        assert response.request.path == f"/accounts/{first_account.id}"
-
-    for category in valid_categories:
-        response = client.post(f"/accounts/{first_account.id}/transactions", data={
-            "description": "Somedesc",
-            "amount": 123,
-            "category": category
-        }, follow_redirects=True)
-        assert 'Successfully created new transaction.' in response.data.decode()
-        assert response.request.path == f"/accounts/{first_account.id}"
-
-
 @pytest.fixture()
 def bulk_transactions():
     transactions = [
@@ -173,6 +90,88 @@ def bulk_transactions():
         {"description": "Student Loan Payment - Sallie Mae", "amount": 150.00, "category": "Online services"},
     ]
     return transactions
+
+## Route tests
+# create route (simulating form submission)
+def test_invalid_form_data(client_initialiser, first_account, valid_and_invalid_transaction_data):
+    client = client_initialiser
+
+    # invalid_descriptions = ["A"*81, "", None] -> Changed for valid_and_invalid_transaction_data
+    # invalid_amounts = ["Invalid", None, 0] -> Changed for valid_and_invalid_transaction_data
+    # invalid_categories = ["Transfer", "Category", "Sports", "", None] -> Changed for valid_and_invalid_transaction_data
+
+    for description in valid_and_invalid_transaction_data["description"]["invalid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions", data={
+            "description": description["value"],
+            "amount": 123,
+            "category": "Rent"
+        }, follow_redirects=True)
+        assert 'Form data is not valid.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+    for amount in valid_and_invalid_transaction_data["amount"]["invalid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions", data={
+            "description": "Somedesc",
+            "amount": amount,
+            "category": "Rent"
+        }, follow_redirects=True)
+        assert 'Form data is not valid.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+    for category in valid_and_invalid_transaction_data["category"]["invalid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions", data={
+            "description": "Somedesc",
+            "amount": 123,
+            "category": category["value"]
+        }, follow_redirects=True)
+        assert 'Form data is not valid.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_create_transaction_for_non_existent_account(client_initialiser, first_account):
+    #Test trying to create a transaction for a non-existent account
+    client = client_initialiser
+
+    response = client.post("/accounts/999/transactions", data={
+        "description": "Somedesc",
+        "amount": 123,
+        "category": "Rent"
+    }, follow_redirects=True)
+
+    assert 'Account not found.' in response.data.decode()
+
+def test_valid_data(client_initialiser, first_account, valid_and_invalid_transaction_data):
+    client = client_initialiser
+
+    # valid_descriptions = ["Test", "A"] -> Replaced with data from valid_and_invalid_transaction_data
+    # valid_amounts = [123, "123", 1, 0.1, -70, 999] -> Replaced with data from valid_and_invalid_transaction_data
+    # valid_categories = ["Rent", "Utilities"] #-> "Transfer" category isnt available in form and is thus only checked for API through __ini__ method
+
+    for description in valid_and_invalid_transaction_data["description"]["valid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions", data={
+            "description": description,
+            "amount": 123,
+            "category": "Rent"
+        }, follow_redirects=True)
+        assert 'Successfully created new transaction.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+    for amount in valid_and_invalid_transaction_data["amount"]["valid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions", data={
+            "description": "Somedesc",
+            "amount": amount,
+            "category": "Rent"
+        }, follow_redirects=True)
+        assert 'Successfully created new transaction.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+    for category in valid_and_invalid_transaction_data["category"]["valid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions", data={
+            "description": "Somedesc",
+            "amount": 123,
+            "category": category
+        }, follow_redirects=True)
+        assert 'Successfully created new transaction.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
 
 def test_transaction_association_and_backgref(client_initialiser, first_account, second_account, bulk_transactions, db_initialiser):
     client = client_initialiser
