@@ -19,33 +19,33 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // SUBACCOUNT TRANSFER: Remove active account from dropdown
-document.addEventListener("DOMContentLoaded", function() {
-  var selectElement = document.getElementById('new-transaction-recipient');
-  var accountNameDiv = document.querySelector('#active-account .account-title')
-  var accountIbanDiv = document.querySelector('#active-account .account-iban')
+// document.addEventListener("DOMContentLoaded", function() {
+//   var selectElement = document.getElementById('new-transaction-recipient');
+//   var accountNameDiv = document.querySelector('#active-account .account-title')
+//   var accountIbanDiv = document.querySelector('#active-account .account-iban')
 
-  // If the ibanDiv exists, return its text content
-  if (accountNameDiv && accountIbanDiv) {
-    const accountTitle =  accountNameDiv.textContent.trim();
-    const accountIban = accountIbanDiv.textContent.trim();
-    console.log(`Found account title: ${accountTitle} and iban: ${accountIban}`)
+//   // If the ibanDiv exists, return its text content
+//   if (accountNameDiv && accountIbanDiv) {
+//     const accountTitle =  accountNameDiv.textContent.trim();
+//     const accountIban = accountIbanDiv.textContent.trim();
+//     console.log(`Found account title: ${accountTitle} and iban: ${accountIban}`)
 
-    // Loop over the options in the select element
-    const searchTerm = `${accountTitle} (${accountIban.slice(0, 4)}...${accountIban.slice(-2)})`
-    console.log(`Search term ${searchTerm}`)
-    for (var i = 0; i < selectElement.options.length; i++) {
-      if (selectElement.options[i].value === searchTerm) {
-          selectElement.removeChild(selectElement.options[i]);
-          console.log("Removed active account from dropdown")
-          break; // Exit the loop once the option is found and removed
-      }
-    }
-  }
-  else {
-    console.log(`Couldnt find account title`)
-  }
+//     // Loop over the options in the select element
+//     const searchTerm = `${accountTitle} (${accountIban.slice(0, 4)}...${accountIban.slice(-2)})`
+//     console.log(`Search term ${searchTerm}`)
+//     for (var i = 0; i < selectElement.options.length; i++) {
+//       if (selectElement.options[i].value === searchTerm) {
+//           selectElement.removeChild(selectElement.options[i]);
+//           console.log("Removed active account from dropdown")
+//           break; // Exit the loop once the option is found and removed
+//       }
+//     }
+//   }
+//   else {
+//     console.log(`Couldnt find account title`)
+//   }
 
-});
+// });
 
 
 
@@ -100,18 +100,32 @@ function initValidation() {
             form.classList.add('was-validated');
           }
         }
-        else if ((event.currentTarget.className.includes("form-subaccount-transfer")) && (document.getElementById("new-transaction-recipient").value === "Recipient")){
-          console.log("SUBACCOUNT TRANSFER")
-          document.getElementById("new-transaction-recipient").setCustomValidity("Invalid field.")
-          event.preventDefault();
-          event.stopPropagation();
-          form.classList.add('was-validated');
+        else if (event.currentTarget.className.includes("form-subaccount-transfer")) {
+          if (document.getElementById("new-transfer-recipient").value === "Recipient"){
+            document.getElementById("new-transfer-recipient").setCustomValidity("Invalid field.")
+            event.preventDefault();
+            event.stopPropagation();
+            form.classList.add('was-validated');
+          }
+          const transfernDescription = document.getElementById("new-transfer-description").value.trim();
+          if ( transfernDescription.length < 3) {
+            document.getElementById("new-transfer-description").setCustomValidity("Description too short (consider whitespaces)")
+            event.preventDefault();
+            event.stopPropagation();
+            form.classList.add('was-validated');
+          }
         }
+
       }, false);
   });
   // Reset the dropdown's validity when its value changes
   document.getElementById("new-transaction-category").addEventListener('change', function() {
     if (this.value !== "Category") {
+        this.setCustomValidity("");
+    }
+  });
+  document.getElementById("new-transfer-recipient").addEventListener('change', function() {
+    if (this.value !== "Recipient") {
         this.setCustomValidity("");
     }
   });
@@ -121,6 +135,11 @@ function initValidation() {
     }
   });
   document.getElementById("new-transaction-description").addEventListener('input', function() {
+    if (this.value.trim().length >= 3) {
+        this.setCustomValidity("");
+    }
+  });
+  document.getElementById("new-transfer-description").addEventListener('input', function() {
     if (this.value.trim().length >= 3) {
         this.setCustomValidity("");
     }

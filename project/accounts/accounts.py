@@ -10,7 +10,7 @@ from pprint import pprint
 # Forms
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, DateField, SelectField, BooleanField
-from wtforms.validators import DataRequired, Length
+from wtforms.validators import DataRequired, Length, AnyOf
 
 
 # Models
@@ -61,9 +61,6 @@ def index():
 @accounts_bp.route("/accounts/<int:account_id>", methods=["GET", "POST"])
 def show(account_id, transactions_filter=None):
 
-    # Importing form that relies on Account model to make sure import happens in correct order
-    from project.transactions.transactions import SubaccountTransferForm
-
     account = Account.query.get(account_id)
     all_accounts = Account.query.all()
     transactions_filter = request.args.get('transactions_filter')
@@ -112,7 +109,17 @@ def show(account_id, transactions_filter=None):
 
     # New transaction form
     transaction_form = TransactionForm()
+
+    # Subaccount transfer form (populate "choices" here to avoid error due to import order (form accesses Account.query))
     subaccount_transfer_form = SubaccountTransferForm()
+    for account in all_accounts:
+        if account.id != account_id:
+            subaccount_transfer_form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
+
+    # Update the AnyOf validator for the recipient field
+    recipient_values = [choice for choice in subaccount_transfer_form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
+    subaccount_transfer_form.recipient.validators.append(AnyOf(recipient_values))
+
 
     # Currency value formatting function to get format: 123.123,00
     def format_currency(value):

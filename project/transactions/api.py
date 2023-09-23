@@ -12,7 +12,6 @@ import re
 import pytz
 
 def api_create_transaction(account_id):
-
     # Validate accounts exists
     account = Account.query.get(account_id)
     if not account:
@@ -63,6 +62,8 @@ def api_create_transaction(account_id):
 
     else:
         return jsonify({"status": "error", "detail": message}), 400
+
+
 
 
 # # ## API endpoints

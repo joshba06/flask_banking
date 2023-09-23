@@ -115,16 +115,16 @@ Joshba06 Banking
     </div>
     <div class="subaccount-transfer">
       <div class="section-title">SUBACCOUNT TRANSFER</div>
-      <form action="{{ url_for('transactions.create_subaccount_transfer', sender_account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-subaccount-transfer" novalidate>
+      <form action="{{ url_for('transactions.create_subaccount_transfer', sender_account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-subaccount-transfer">
         {{ subaccount_transfer_form.hidden_tag() }}
         <div class="input-group input-group-sm mr-2">
-          {{ subaccount_transfer_form.description(class_="form-control",  aria_describedby="inputGroup-sizing-sm") }}
+          {{ subaccount_transfer_form.description(class_="form-control",  aria_describedby="inputGroup-sizing-sm", id="new-transfer-description") }}
         </div>
         <div class="input-group input-group-sm mr-2">
-          {{ subaccount_transfer_form.recipient(class_="custom-select", id="new-transaction-recipient") }}
+          {{ subaccount_transfer_form.recipient(class_="custom-select", id="new-transfer-recipient") }}
         </div>
         <div class="input-group input-group-sm mr-2">
-          {{ subaccount_transfer_form.amount(class_="form-control", style="width:100px") }}
+          {{ subaccount_transfer_form.amount(class_="form-control", style="width:100px", id="new-transfer-amount") }}
         </div>
         <div class="input-group input-group-sm mr-2">
           {{ subaccount_transfer_form.submit(class_="btn btn-sm btn-success") }}

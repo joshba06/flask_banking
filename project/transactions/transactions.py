@@ -38,7 +38,6 @@ def not_empty_string(form, field):
     if len(field.data.strip()) < 3:
         raise ValidationError('Description too short (consider whitespaces)')
 
-
 class TransactionForm(FlaskForm):
     description = StringField("Transaction description",
                               validators=[DataRequired(), Length(max=80), not_empty_string],
@@ -57,15 +56,13 @@ class TransactionForm(FlaskForm):
                           )
     submit = SubmitField("Add")
 
-class SubaccountTransferForm(FlaskForm):
-    description = StringField("Subaccount transfer description", validators=[DataRequired()], render_kw={"placeholder": "Reference"})
-    choices = ["Recipient"]
-    # for account in Account.query.all():
-    #     choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})")
-    recipient = SelectField("Recipient", choices = choices, validators=[DataRequired()], render_kw={"placeholder": "Recipient"})
-    amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
-    submit = SubmitField("Add")
+class SubaccountTransferForm(TransactionForm):
+    recipient = SelectField("Recipient", choices = ["Recipient"], validators=[DataRequired()], render_kw={"placeholder": "Recipient"})
 
+    # Remove "category" from form
+    def __init__(self, *args, **kwargs):
+        super(SubaccountTransferForm, self).__init__(*args, **kwargs)
+        del self.category
 
 @transactions_bp.route("/accounts/<int:account_id>/transactions", methods=["POST"])
 def create(account_id):
@@ -125,67 +122,70 @@ def create_transaction(account, description, amount, category, utc_datetime_book
 @transactions_bp.route("/accounts/<int:sender_account_id>/transactions/create_subaccount_transfer", methods=["POST"])
 def create_subaccount_transfer(sender_account_id):
 
+    # Validate sender account exists (param)
     sender_account = Account.query.get(sender_account_id)
-    if not sender_account: # If sender account cannot be found, forward to index page
-        flash("Could not find sender account.", "error")
+    if not sender_account:
+        message = 'Sender account not found.'
+        status = "error"
+    else:
+        # Validate form (request body)
+
+        # Subaccount transfer form (populate "choices" here to avoid error due to import order (form accesses Account.query))
+        subaccount_transfer_form = SubaccountTransferForm()
+        for account in Account.query.all():
+            if account.id != sender_account.id:
+                subaccount_transfer_form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
+
+        # Update the AnyOf validator for the recipient field
+        recipient_values = [choice for choice in subaccount_transfer_form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
+        subaccount_transfer_form.recipient.validators.append(AnyOf(recipient_values))
+
+        # Evaluate data received from form
+        if not subaccount_transfer_form.validate(): # Validates reference max length, recipient(that it cannot be "Recipient" too), amount(can be string digits, cannot be =0)
+            print(subaccount_transfer_form.errors)
+            message = 'Form data is not valid.'
+            status = "error"
+        else:
+            recipient_account_title = subaccount_transfer_form.recipient.data.split("(")[0].strip()
+            recipient_account_fractional_iban = subaccount_transfer_form.recipient.data.split("(")[1].strip()
+            recipient_account_fractional_iban = recipient_account_fractional_iban.split(")")[0].strip()
+
+            try:
+                recipient_account = Account.query.filter(
+                    Account.title == recipient_account_title,
+                    Account.iban.like(f"{recipient_account_fractional_iban[:4]}%"),
+                    Account.iban.like(f"%{recipient_account_fractional_iban[-2:]}")
+                ).one()
+            except NoResultFound:
+                message = 'Recipient account not found.'
+                status = "error"
+            else:
+                # Initiate transfer
+                transfer_amount = subaccount_transfer_form.amount.data
+
+                # Sender
+                try:
+                    status, message, sender_transcation_id = create_transaction(account=sender_account,
+                                                                                description=subaccount_transfer_form.description.data,
+                                                                                amount=-subaccount_transfer_form.amount.data,
+                                                                                category="Transfer")
+                except:
+                    pass
+                else:
+                    # Only create recipient transfer if sender transfer was successful
+                    status, message, recipient_transcation_id = create_transaction(account=recipient_account,
+                                                                                description=subaccount_transfer_form.description.data,
+                                                                                amount=subaccount_transfer_form.amount.data,
+                                                                                category="Transfer")
+
+
+    flash(message, status)
+
+    if status == "success":
+        return redirect(url_for("accounts.show", account_id=sender_account_id))
+    else:
         return redirect(url_for("accounts.index"))
 
-    # Create subaccount transfer form and populate "choices" field. This is to
-    subaccount_transfer_form = SubaccountTransferForm()
-
-
-
-    recipient_account_title = subaccount_transfer_form.recipient.data.split("(")[0].strip()
-    recipient_account_fractional_iban = subaccount_transfer_form.recipient.data.split("(")[1].strip()
-    recipient_account_fractional_iban = recipient_account_fractional_iban.split(")")[0].strip()
-
-    try:
-        recipient_account = Account.query.filter(
-            Account.title == recipient_account_title,
-            Account.iban.like(f"{recipient_account_fractional_iban[:4]}%"),
-            Account.iban.like(f"%{recipient_account_fractional_iban[-2:]}")
-        ).one()
-    except NoResultFound:
-        print('Recipient account not found.')
-        flash('Recipient account not found.', "error")
-        return redirect(url_for("accounts.show", account_id=sender_account_id))
-
-    print("Outside form")
-    # POST request was made and form field have valid input
-    if subaccount_transfer_form.validate_on_submit():
-        print("I am inside the form")
-        transfer_amount = subaccount_transfer_form.amount.data
-
-        if transfer_amount <= 0:
-            flash('Invalid transfer amount.', 'error')
-            return redirect(url_for("accounts.show", account_id=sender_account_id))
-
-        if sender_account.saldo < transfer_amount:
-            flash('Insufficient funds.', 'error')
-            return redirect(url_for("accounts.show", account_id=sender_account_id))
-
-
-        sender_transaction = Transaction(subaccount_transfer_form.description.data, -subaccount_transfer_form.amount.data, "Transfer")
-        sender_account.transactions.append(sender_transaction)
-
-        recipient_transaction = Transaction(subaccount_transfer_form.description.data, subaccount_transfer_form.amount.data, "Transfer")
-        recipient_account.transactions.append(recipient_transaction)
-
-        try:
-            db_session.add_all([sender_transaction, recipient_transaction])
-            db_session.commit()
-            sender_transaction.calculate_saldo()
-            recipient_transaction.calculate_saldo()
-            flash('Successfully created new transfer.', "success")
-            return redirect(url_for("accounts.show", account_id=sender_account_id))
-        except Exception as e:
-            print(f"Something went wrong while creating new transfer: {e}")
-            flash('Something went wrong while creating new transfer.', "error")
-            db_session.rollback()
-
-    else:
-        flash('Invalid form submission.', "error")
-        return redirect(url_for("accounts.show", account_id=sender_account_id))
 
 @transactions_bp.route('/download_csv', methods=['POST'])
 def download_csv():

@@ -43,6 +43,9 @@ amount
 - may ne positive or negative, cannot be 0
 - Cannot be string or any other datatype, must be float
 
+saldo
+- (Numeric)
+- May be negative or positive (doesnt throw error if transaction is initiated but balance is negative)
 
 category
 - (String): Transaction category.
