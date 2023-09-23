@@ -1,6 +1,8 @@
 import pytest
 from datetime import datetime, timedelta
+import pytz
 
+## Test fixtures
 @pytest.fixture()
 def first_account(db_initialiser, client_initialiser):
     # Create first account (database must have at least 1 account)
@@ -13,7 +15,17 @@ def first_account(db_initialiser, client_initialiser):
     return account
 
 @pytest.fixture()
-def valid_and_invalid_api_data():
+def second_account(db_initialiser, client_initialiser):
+    Account, Transaction, db_session = db_initialiser
+
+    client = client_initialiser
+    client.post("/accounts/create", data={"title": "John's Savings2", "accept_terms": True}, follow_redirects=True)
+    account = Account.query.filter(Account.title == "John's Savings2").first()
+    assert account.title == "John's Savings2"
+    return account
+
+@pytest.fixture()
+def valid_and_invalid_transaction_data():
     data = {
     'description': {
         'valid': ["Valid", "Test123", "123"],
@@ -42,6 +54,19 @@ def valid_and_invalid_api_data():
             {'value': "123", 'error_message': "'123' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"},
             {'value': "Books", 'error_message': "'Books' is not one of ['Salary', 'Rent', 'Utilities', 'Groceries', 'Night out', 'Online services'] - 'category'"}
         ]
+        },
+    'utc_datetime_booked': {
+        'valid': ["2023-09-04T12:00:00Z", "2021-06-01T12:00:00Z", "2027-09-04T12:14:11Z"], # None tested separatly as default date test
+        'invalid': [
+            {'value': "", 'error_message': "utc_datetime_booked was not provided in the correct format"},
+            {'value': "   ", 'error_message': "utc_datetime_booked was not provided in the correct format"},
+            {'value': "2023-09-04T12:00:00T", 'error_message': "utc_datetime_booked was not provided in the correct format"},
+            {'value': "2023-09-04T", 'error_message': "utc_datetime_booked was not provided in the correct format"},
+            {'value': "2023-09-04T12:00:00+02:00", 'error_message': "utc_datetime_booked was not provided in the correct format"},
+            {'value': "2023/09/04T12:00:00+02:00", 'error_message': "utc_datetime_booked was not provided in the correct format"},
+            {'value': "04/09/2023T12:00:00+02:00", 'error_message': "utc_datetime_booked was not provided in the correct format"},
+            {'value': "2023-02-31T12:00:00Z", 'error_message': "Could not convert utc_datetime_booked to datetime object"}, # date doesnt exist
+        ]
         }
     }
 
@@ -49,7 +74,6 @@ def valid_and_invalid_api_data():
 
 ## Route tests
 # create route (simulating form submission)
-
 def test_invalid_form_data(client_initialiser, first_account):
     client = client_initialiser
 
@@ -131,16 +155,6 @@ def test_valid_data(client_initialiser, first_account):
         assert 'Successfully created new transaction.' in response.data.decode()
         assert response.request.path == f"/accounts/{first_account.id}"
 
-@pytest.fixture()
-def second_account(db_initialiser, client_initialiser):
-    # Create first account (database must have at least 1 account)
-    Account, Transaction, db_session = db_initialiser
-
-    client = client_initialiser
-    client.post("/accounts/create", data={"title": "John's Savings2", "accept_terms": True}, follow_redirects=True)
-    account = Account.query.filter(Account.title == "John's Savings2").first()
-    assert account.title == "John's Savings2"
-    return account
 
 @pytest.fixture()
 def bulk_transactions():
@@ -224,10 +238,10 @@ def test_api_create_transaction_non_existent_account(client_initialiser):
     assert response.status_code == 400
     assert response.json["detail"] == "Account not found"
 
-def test_api_create_transaction_invalid(first_account, client_initialiser, valid_and_invalid_api_data):
+def test_api_create_transaction_invalid(first_account, client_initialiser, valid_and_invalid_transaction_data):
     # Invalid body data should produce automatic swagger validation error + message (see swagger.yml for request requirements)
 
-    data = valid_and_invalid_api_data
+    data = valid_and_invalid_transaction_data
     client = client_initialiser
 
     for description in data["description"]["invalid"]:
@@ -262,12 +276,19 @@ def test_api_create_transaction_invalid(first_account, client_initialiser, valid
         assert response.status_code == 400
         assert category['error_message'] in response.json["detail"]
 
-# X Add date_booked tests after it was changed to time_booked. Include this data in valid_and_invalid_api_data
-def test_api_create_date_booked():
-    assert 1 == 2
+    for utc_datetime_booked in data["utc_datetime_booked"]["invalid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": "ValidDescription",
+            "amount": 50,
+            "category": "Rent",
+            "utc_datetime_booked": utc_datetime_booked["value"]
+        })
+        assert response.status_code == 400
+        assert utc_datetime_booked['error_message'] in response.json["detail"]
 
-def test_api_create_transaction_valid(first_account, client_initialiser, valid_and_invalid_api_data):
-    data = valid_and_invalid_api_data
+def test_api_create_transaction_valid(first_account, client_initialiser, valid_and_invalid_transaction_data):
+    data = valid_and_invalid_transaction_data
     client = client_initialiser
 
     for description in data["description"]["valid"]:
@@ -287,7 +308,6 @@ def test_api_create_transaction_valid(first_account, client_initialiser, valid_a
             "amount": amount,
             "category": "Groceries"
         })
-        print(response.data.decode())
         assert response.status_code == 201
         assert "Successfully created new transaction" in response.json["detail"]
 
@@ -302,36 +322,43 @@ def test_api_create_transaction_valid(first_account, client_initialiser, valid_a
         assert response.status_code == 201
         assert "Successfully created new transaction" in response.json["detail"]
 
-def test_api_create_no_date_provided(first_account, client_initialiser, valid_and_invalid_api_data):
-    # data = valid_and_invalid_api_data
-    # client = client_initialiser
+    for utc_datetime_booked in data["utc_datetime_booked"]["valid"]:
+        response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+            "account_id": first_account.id,
+            "description": "ValidDescription",
+            "amount": 50,
+            "category": "Rent",
+            "utc_datetime_booked": utc_datetime_booked
+        })
+        assert response.json["utc_datetime_booked"] == utc_datetime_booked
+        assert response.status_code == 201
+        assert "Successfully created new transaction" in response.json["detail"]
 
-    # response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
-    #     "account_id": first_account.id,
-    #     "description": "ValidDescription",
-    #     "amount": 50,
-    #     "category": "Rent"
-    # })
+def test_api_create_no_date_provided(first_account, client_initialiser):
+    client = client_initialiser
 
-    # assert response.status_code == 201
-    # assert "Successfully created new transaction" in response.json["detail"]
+    response = client.post(f'/api/accounts/{first_account.id}/transactions', json={
+        "account_id": first_account.id,
+        "description": "ValidDescription",
+        "amount": 50,
+        "category": "Rent"
+    })
 
-    # # Ensure date and time are within the last 5 minutes from current time
-    # date_booked = datetime.fromisoformat(response.json["date_booked"].replace('Z', '+00:00'))
+    assert response.status_code == 201
+    assert "Successfully created new transaction" in response.json["detail"]
 
-    # time_5_minutes_ago = datetime.now() - timedelta(minutes=5)
-    # assert time_5_minutes_ago <= date_booked
-    # assert date_booked <= datetime.now()
+    # Ensure date and time are within the last 60 seconds from current time UTC
+    utc_datetime_booked_string = response.json["utc_datetime_booked"]
+    naive_datetime = datetime.fromisoformat(utc_datetime_booked_string.replace("Z", "+00:00"))
+    utc_datetime_booked = naive_datetime.astimezone(pytz.utc)
 
-    # print(time_5_minutes_ago)
-    # print(type(date_booked))
+    utc_current_time = datetime.now(pytz.utc)
+    delta_t = (utc_current_time - utc_datetime_booked).total_seconds()
 
-    assert 1 == 2
+    assert delta_t <= 60
 
-
-
-def test_api_create_multiple_transactions_saldo(first_account, client_initialiser, valid_and_invalid_api_data):
-    data = valid_and_invalid_api_data
+def test_api_create_multiple_transactions_saldo(first_account, client_initialiser, valid_and_invalid_transaction_data):
+    data = valid_and_invalid_transaction_data
     client = client_initialiser
 
     # Ensure no transactions were added to account
@@ -351,8 +378,8 @@ def test_api_create_multiple_transactions_saldo(first_account, client_initialise
         # Ensure each transaction has correct saldo
         assert response.json["saldo"] == sum(amounts[:i+1])
 
-def test_api_create_negative_saldo_possible(first_account, client_initialiser, valid_and_invalid_api_data):
-    data = valid_and_invalid_api_data
+def test_api_create_negative_saldo_possible(first_account, client_initialiser, valid_and_invalid_transaction_data):
+    data = valid_and_invalid_transaction_data
     client = client_initialiser
 
     # Ensure no transactions were added to account

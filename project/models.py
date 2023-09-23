@@ -86,7 +86,7 @@ class Transaction(Base):
         else:
             if not isinstance(utc_datetime_booked, datetime):
                 raise ValueError("utc_datetime_booked is not of type datetime.")
-            elif utc_datetime_booked.tzinfo != pytz.utc:
+            elif utc_datetime_booked.tzinfo != pytz.UTC:
                 raise ValueError("utc_datetime_booked is not in UTC.")
             else:
                 self.utc_datetime_booked = utc_datetime_booked
