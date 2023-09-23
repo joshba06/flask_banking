@@ -68,3 +68,12 @@ utc_datetime_booked
 
 
 account_id (Integer): Foreign Key from "accounts" table.
+
+
+tests
+- Unit tests
+  - Tests of models, sub-functions and forms
+    - Forms: Focuss on "Recipient" and "Category", as other input is checked in routes tests
+
+- Funcitonal tests
+  - Test of entire routes, APIs, more complex features

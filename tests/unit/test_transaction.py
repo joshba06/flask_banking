@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from pprint import pprint
 import pytz
+from sqlalchemy.orm.exc import NoResultFound
 
 # # New tests to be added
 # # Group my month tests are needed if the function will remain.
@@ -66,7 +67,7 @@ def test_valid_transaction(model_initialiser):
     assert transaction.category == category
 
 
-## Transaction sub-function tests (create_transaction...)
+## Transaction sub-function tests (create_transaction, form validation etc.)
 @pytest.fixture
 def valid_account(db_initialiser):
     Account, Transaction, db_session = db_initialiser
@@ -76,6 +77,21 @@ def valid_account(db_initialiser):
     assert Account.query.count() == 1
 
     return account
+
+@pytest.fixture
+def bulk_accounts(db_initialiser):
+    Account, Transaction, db_session = db_initialiser
+    account1 = Account("Main", "DE89370400440532013000")
+    account2 = Account("Savings", "DE89370400440532013001")
+    account3 = Account("Main", "DE89370400440532013002")
+    account4 = Account("Shared", "DE89370400440532013003")
+    accounts = [account1, account2, account3, account4]
+
+    db_session.add_all(accounts)
+    db_session.commit()
+    assert Account.query.count() == 4
+
+    return accounts
 
 def test_create_transaction_valid_transaction(valid_account):
     from project.transactions.transactions import create_transaction
@@ -135,9 +151,158 @@ def test_create_transaction_database_error(account_initialiser):
 
     status, message, _ = create_transaction(None, "Description", 100, "Rent")
     assert status == "error"
-    assert message == "Error occurred while creating the account."
+    assert message == "Error occurred while creating the transaction."
 
+def test_validate_account(valid_account):
+    from project.transactions.transactions import validate_account, AccountNotFoundError
 
+    result_account = validate_account(valid_account.id)
+    assert result_account.id == valid_account.id
+    assert result_account.iban == valid_account.iban
+
+    with pytest.raises(AccountNotFoundError, match="Account not found."):
+        validate_account(99)
+
+def test_get_recipient_account_invalid(bulk_accounts):
+    from project.transactions.transactions import get_recipient_account
+
+    with pytest.raises(NoResultFound, match="No row was found when one was required"):
+       get_recipient_account("Invalid", "123")
+
+    with pytest.raises(NoResultFound, match="No row was found when one was required"):
+       get_recipient_account("Main", "123")
+
+    with pytest.raises(NoResultFound, match="No row was found when one was required"):
+       get_recipient_account("Invalid", "DE89370400440532013002")
+
+def test_get_recipient_account_valid(bulk_accounts):
+    from project.transactions.transactions import get_recipient_account
+
+    first = get_recipient_account("Main", "DE89...00")
+    assert first.title == "Main"
+    assert first.iban == "DE89370400440532013000"
+    assert first.id == next((account for account in bulk_accounts if account.iban.endswith("00")), None).id
+
+    second = get_recipient_account("Main", "DE89...02")
+    assert second.title == "Main"
+    assert second.iban == "DE89370400440532013002"
+    assert second.id == next((account for account in bulk_accounts if account.iban.endswith("02")), None).id
+
+    third = get_recipient_account("Shared", "DE89...03")
+    assert third.title == "Shared"
+    assert third.iban == "DE89370400440532013003"
+    assert third.id == next((account for account in bulk_accounts if account.iban.endswith("03")), None).id
+
+@pytest.fixture()
+def configure_transfer_form(app_initialiser, bulk_accounts):
+    app = app_initialiser[0]
+    Account = app_initialiser[1]
+    from project.transactions.transactions import update_transfer_form, SubaccountTransferForm
+
+    assert Account.query.count() == len(bulk_accounts)
+
+    # Assing account with iban ending "02" as current account
+    sender_account =  next((account for account in bulk_accounts if account.iban.endswith("02")), None)
+    assert sender_account.iban == "DE89370400440532013002"
+
+    with app.app_context():
+        form = SubaccountTransferForm()
+        print(Account.query.count())
+
+        message, status = update_transfer_form(form, sender_account.id)
+        assert status == "success"
+
+        return form
+
+def test_update_transfer_form_success(configure_transfer_form):
+    form = configure_transfer_form
+    # Ensure default value is "Recipient" and sender account is not in choices
+    assert form.recipient.choices[0] == "Recipient"
+    assert len(form.recipient.choices) == 4 # "Recipient" + 3 accounts (not sender account)
+
+    assert form.recipient.choices == ["Recipient", "Main (DE89...00)", "Savings (DE89...01)", "Shared (DE89...03)" ]
+
+def test_validate_transfer_data_valid_data(configure_transfer_form):
+    from project.transactions.transactions import validate_transfer_data
+
+    # Starts with form with choices and validation added. Sender account has iban DE89370400440532013002
+    subaccount_transfer_form = configure_transfer_form
+
+    # Fill form with valid data
+    subaccount_transfer_form.description.data = "Valid"
+    subaccount_transfer_form.amount.data = 100
+    subaccount_transfer_form.recipient.data = "Main (DE89...00)"
+
+    title, fractional_iban = validate_transfer_data(subaccount_transfer_form)
+
+    # Ensure form accepts input as valid
+    assert title == "Main"
+    assert fractional_iban == "DE89...00"
+
+def test_validate_transfer_data_invalid_recipient_format(configure_transfer_form):
+    from project.transactions.transactions import validate_transfer_data
+
+    invalid_formats = [" ", "Invalid Format", None, "Main (DE89...00", "Savings DE89...01)", "Shared(DE89...03)", "Main(DE89..00)"]
+
+    # Starts with form with choices and validation added. Sender account has iban DE89370400440532013002
+    subaccount_transfer_form = configure_transfer_form
+
+    # Fill form with valid data
+    subaccount_transfer_form.description.data = "Valid"
+    subaccount_transfer_form.amount.data = 100
+    for invalid_recipient_format in invalid_formats:
+        subaccount_transfer_form.recipient.data = invalid_recipient_format
+        with pytest.raises(ValueError, match="Form data is not valid."):
+            validate_transfer_data(subaccount_transfer_form)
+
+def test_validate_transfer_data_invalid_recipient_account(configure_transfer_form):
+    from project.transactions.transactions import validate_transfer_data
+
+    recipient_sender_account = "Main (DE89...02)"
+
+    # Starts with form with choices and validation added. Sender account has iban DE89370400440532013002
+    subaccount_transfer_form = configure_transfer_form
+
+    # Fill form with valid data
+    subaccount_transfer_form.description.data = "Valid"
+    subaccount_transfer_form.amount.data = 100
+
+    subaccount_transfer_form.recipient.data = recipient_sender_account
+    with pytest.raises(ValueError, match="Form data is not valid."):
+        validate_transfer_data(subaccount_transfer_form)
+
+def test_process_sender_transaction_invalid_data(configure_transfer_form, bulk_accounts):
+    from project.transactions.transactions import process_sender_transaction, TransactionError
+    subaccount_transfer_form = configure_transfer_form
+
+    # Ensure transfer isnt processed with invalid form data
+    subaccount_transfer_form.description.data = "A"*99
+    subaccount_transfer_form.amount.data = 0
+    account = bulk_accounts[0]
+
+    with pytest.raises(TransactionError, match="Failed to process sender transaction."):
+        process_sender_transaction(account, subaccount_transfer_form)
+
+    # Ensure transfer isnt processed with invalid account
+    subaccount_transfer_form.description.data = "Valid"
+    subaccount_transfer_form.amount.data = 100
+    account = 1
+
+    with pytest.raises(TransactionError, match="Failed to process sender transaction."):
+        process_sender_transaction(account, subaccount_transfer_form)
+
+def test_process_sender_transaction_valid_data(configure_transfer_form, bulk_accounts):
+    from project.transactions.transactions import process_sender_transaction
+    subaccount_transfer_form = configure_transfer_form
+
+    subaccount_transfer_form.description.data = "Valid transaction 2023"
+    subaccount_transfer_form.amount.data = 250
+    account = bulk_accounts[0]
+
+    process_sender_transaction(account, subaccount_transfer_form)
+
+    transaction = next((transaction for transaction in account.transactions if transaction.description == "Valid transaction 2023"), None)
+    assert transaction
 
 
 # ## Database tests (inkl. association of models Account and Transaction)

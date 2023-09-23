@@ -22,12 +22,16 @@ from pprint import pprint
 from project.models import Account, Transaction
 from project.db import db_session
 
-
 # Define the name of this blueprint and which url its reached under. This has to be registered in create_app()
 transactions_bp = Blueprint('transactions', __name__,
                template_folder='templates',
                static_folder='../static',
                static_url_path='assets')
+
+class AccountNotFoundError(Exception):
+    pass
+class TransactionError(Exception):
+    pass
 
 # Define forms to be used in all controllers
 def not_zero(form, field):
@@ -72,8 +76,9 @@ def create(account_id):
         message = 'Form data is not valid.'
         status = "error"
     else:
-        account = Account.query.get(account_id)
-        if not account: # Validates account exists
+        try:
+            account = validate_account(account_id)
+        except AccountNotFoundError as e:
             message = 'Account not found.'
             status = "error"
         else:
@@ -88,103 +93,36 @@ def create(account_id):
     else:
         return redirect(url_for("accounts.index"))
 
-def create_transaction(account, description, amount, category, utc_datetime_booked=None):
-    '''
-    :param account: account instance
-    :param description: Description of transaction
-    :param amount: Transaction amount
-    :param category: TO BE DISCUSSED
-    :param utc_datetime_booked: datetime object in UTC timezone format
-    '''
-
-    try:
-        # Create new transaction and link to account
-        transaction = Transaction(description=description, amount=amount, category=category, utc_datetime_booked=utc_datetime_booked)
-        account.transactions.append(transaction)
-        db_session.add(account)
-        db_session.commit()
-
-        # Calculate saldo for transaction
-        transaction.calculate_saldo()
-
-        print(f"Successfully created new transaction: {transaction}")
-        return "success", "Successfully created new transaction.", transaction.id
-
-    except ValueError as ve: # This will capture all ValueErrors raised in __init__
-        db_session.rollback()
-        print(f"Error: {ve}") # Display the actual error message from __init__
-        return "error", f"{ve}", None
-    except Exception as e:
-        db_session.rollback()
-        print(f"Error occurred while creating new account: {e}")
-        return "error", 'Error occurred while creating the account.', None
-
 @transactions_bp.route("/accounts/<int:sender_account_id>/transactions/create_subaccount_transfer", methods=["POST"])
 def create_subaccount_transfer(sender_account_id):
 
-    # Validate sender account exists (param)
-    sender_account = Account.query.get(sender_account_id)
-    if not sender_account:
-        message = 'Sender account not found.'
-        status = "error"
-    else:
-        # Validate form (request body)
+    # Process form data
+    transfer_form = SubaccountTransferForm()
+    try:
+        sender_account = validate_account(sender_account_id)
 
-        # Subaccount transfer form (populate "choices" here to avoid error due to import order (form accesses Account.query))
-        subaccount_transfer_form = SubaccountTransferForm()
-        for account in Account.query.all():
-            if account.id != sender_account.id:
-                subaccount_transfer_form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
+        message, status = update_transfer_form(transfer_form, sender_account.id)
 
-        # Update the AnyOf validator for the recipient field
-        recipient_values = [choice for choice in subaccount_transfer_form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
-        subaccount_transfer_form.recipient.validators.append(AnyOf(recipient_values))
+        recipient_account_title, recipient_fractional_iban = validate_transfer_data(transfer_form)
 
-        # Evaluate data received from form
-        if not subaccount_transfer_form.validate(): # Validates reference max length, recipient(that it cannot be "Recipient" too), amount(can be string digits, cannot be =0)
-            print(subaccount_transfer_form.errors)
-            message = 'Form data is not valid.'
-            status = "error"
-        else:
-            recipient_account_title = subaccount_transfer_form.recipient.data.split("(")[0].strip()
-            recipient_account_fractional_iban = subaccount_transfer_form.recipient.data.split("(")[1].strip()
-            recipient_account_fractional_iban = recipient_account_fractional_iban.split(")")[0].strip()
+        # Retrieve recipient account based on parsed data
+        recipient_account = get_recipient_account(recipient_account_title, recipient_fractional_iban)
 
-            try:
-                recipient_account = Account.query.filter(
-                    Account.title == recipient_account_title,
-                    Account.iban.like(f"{recipient_account_fractional_iban[:4]}%"),
-                    Account.iban.like(f"%{recipient_account_fractional_iban[-2:]}")
-                ).one()
-            except NoResultFound:
-                message = 'Recipient account not found.'
-                status = "error"
-            else:
-                # Initiate transfer
-                transfer_amount = subaccount_transfer_form.amount.data
+        # Create transactions
+        process_sender_transaction(sender_account, transfer_form)
+        process_recipient_transaction(recipient_account, transfer_form)
 
-                # Sender
-                try:
-                    status, message, sender_transcation_id = create_transaction(account=sender_account,
-                                                                                description=subaccount_transfer_form.description.data,
-                                                                                amount=-subaccount_transfer_form.amount.data,
-                                                                                category="Transfer")
-                except:
-                    pass
-                else:
-                    # Only create recipient transfer if sender transfer was successful
-                    status, message, recipient_transcation_id = create_transaction(account=recipient_account,
-                                                                                description=subaccount_transfer_form.description.data,
-                                                                                amount=subaccount_transfer_form.amount.data,
-                                                                                category="Transfer")
-
-
-    flash(message, status)
-
-    if status == "success":
+        message = f"Successfully created transfer from {sender_account.title} to {recipient_account.title}"
+        status = "success"
+        flash(message, status)
         return redirect(url_for("accounts.show", account_id=sender_account_id))
-    else:
+
+    except AccountNotFoundError as ae:
+        flash(str(e), "error")
         return redirect(url_for("accounts.index"))
+    except (NoResultFound, TransactionError, ValueError) as e:
+        flash(str(e), "error")
+        return redirect(url_for("accounts.show", account_id=sender_account_id))
 
 
 @transactions_bp.route('/download_csv', methods=['POST'])
@@ -231,3 +169,97 @@ def download_csv():
     except:
         flash('Successfully went wrong while downloading csv.', "error")
         return redirect(url_for("accounts.show", account_id=1))
+
+
+## Subfunctions
+def create_transaction(account, description, amount, category, utc_datetime_booked=None):
+    '''
+    :param account: account instance
+    :param description: Description of transaction
+    :param amount: Transaction amount
+    :param category: TO BE DISCUSSED
+    :param utc_datetime_booked: datetime object in UTC timezone format
+    '''
+
+    try:
+        # Create new transaction and link to account
+        transaction = Transaction(description=description, amount=amount, category=category, utc_datetime_booked=utc_datetime_booked)
+        account.transactions.append(transaction)
+        db_session.add(account)
+        db_session.commit()
+
+        # Calculate saldo for transaction
+        transaction.calculate_saldo()
+
+        print(f"Successfully created new transaction: {transaction}")
+        return "success", "Successfully created new transaction.", transaction.id
+
+    except ValueError as ve: # This will capture all ValueErrors raised in __init__
+        db_session.rollback()
+        print(f"Error: {ve}") # Display the actual error message from __init__
+        return "error", f"{ve}", None
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while creating new transaction: {e}")
+        return "error", 'Error occurred while creating the transaction.', None
+
+def validate_account(account_id):
+    account = Account.query.get(account_id)
+    if not account:
+        raise AccountNotFoundError('Account not found.')
+    else:
+        return account
+
+def update_transfer_form(form, sender_account_id):
+    try:
+        for account in Account.query.all():
+            if account.id != sender_account_id:
+                form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
+        # Update the AnyOf validator for the recipient field
+        recipient_values = [choice for choice in form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
+        form.recipient.validators.append(AnyOf(recipient_values))
+    except Exception:
+        return "Could not update transfer form.", "error"
+    else:
+        return "Updated transfer form", "success"
+
+def validate_transfer_data(form):
+    # Evaluate data received from form
+    if not form.validate(): # Validates reference max length, recipient(that it cannot be "Recipient" too), amount(can be string digits, cannot be =0)
+        print(form.errors)
+        raise ValueError('Form data is not valid.')
+    else:
+        recipient_title = form.recipient.data.split("(")[0].strip()
+        recipient_fractional_iban = form.recipient.data.split("(")[1].strip()
+        recipient_fractional_iban = recipient_fractional_iban.split(")")[0].strip()
+        return recipient_title, recipient_fractional_iban
+
+def get_recipient_account(title, fractional_iban):
+    """Retrieve recipient account based on title and fractional IBAN."""
+    return Account.query.filter(
+        Account.title == title,
+        Account.iban.like(f"{fractional_iban[:4]}%"),
+        Account.iban.like(f"%{fractional_iban[-2:]}")
+    ).one()
+
+def process_sender_transaction(account, form):
+    """Process sender transaction and return its ID."""
+    _, _, transaction_id = create_transaction(
+        account=account,
+        description=form.description.data,
+        amount=-form.amount.data,
+        category="Transfer"
+    )
+    if not transaction_id:
+        raise TransactionError("Failed to process sender transaction.")
+
+def process_recipient_transaction(account, form):
+    """Process recipient transaction and return its ID."""
+    _, _, transaction_id = create_transaction(
+        account=account,
+        description=form.description.data,
+        amount=form.amount.data,
+        category="Transfer"
+    )
+    if not transaction_id:
+        raise TransactionError("Failed to process recipient transaction.")
