@@ -34,8 +34,15 @@ def not_zero(form, field):
     if field.data == 0:
         raise ValidationError('Amount cannot be zero')
 
+def not_empty_string(form, field):
+    if len(field.data.strip()) < 3:
+        raise ValidationError('Description too short (consider whitespaces)')
+
+
 class TransactionForm(FlaskForm):
-    description = StringField("Transaction description", validators=[DataRequired(), Length(max=80)], render_kw={"placeholder": "Reference"})
+    description = StringField("Transaction description",
+                              validators=[DataRequired(), Length(max=80), not_empty_string],
+                              render_kw={"placeholder": "Reference"})
     choices = ["Category", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]
     category = SelectField("Category",
                            choices = choices,

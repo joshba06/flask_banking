@@ -70,7 +70,7 @@ class Transaction(Base):
         if not isinstance(description, str) or (len(description.strip()) > 80 or len(description.strip()) == 0):
             raise ValueError("The description variable must be a string with more than 0 and less than 80 characters.")
         else:
-            self.description = description
+            self.description = description.strip()
 
         if not isinstance(amount, (int, float, decimal.Decimal)) or amount == 0:
             raise ValueError("The amount variable must be non-zero decimal, integer or float.")

@@ -92,6 +92,13 @@ function initValidation() {
             event.stopPropagation();
             form.classList.add('was-validated');
           }
+          const transactionDescription = document.getElementById("new-transaction-description").value.trim();
+          if ( transactionDescription.length < 3) {
+            document.getElementById("new-transaction-description").setCustomValidity("Description too short (consider whitespaces)")
+            event.preventDefault();
+            event.stopPropagation();
+            form.classList.add('was-validated');
+          }
         }
         else if ((event.currentTarget.className.includes("form-subaccount-transfer")) && (document.getElementById("new-transaction-recipient").value === "Recipient")){
           console.log("SUBACCOUNT TRANSFER")
@@ -110,6 +117,11 @@ function initValidation() {
   });
   document.getElementById("new-transaction-amount").addEventListener('input', function() {
     if (this.value !== "0") {
+        this.setCustomValidity("");
+    }
+  });
+  document.getElementById("new-transaction-description").addEventListener('input', function() {
+    if (this.value.trim().length >= 3) {
         this.setCustomValidity("");
     }
   });
