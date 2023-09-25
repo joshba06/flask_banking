@@ -2,7 +2,7 @@
 from flask import (
     Blueprint, redirect, url_for, jsonify, abort, request, flash
 )
-from sqlalchemy.orm.exc import NoResultFound, MultipleResultsFound
+from sqlalchemy.orm.exc import NoResultFound
 
 # CSV download
 import csv
@@ -22,18 +22,7 @@ from pprint import pprint
 from project.models import Account, Transaction
 from project.db import db_session
 
-# Define the name of this blueprint and which url its reached under. This has to be registered in create_app()
-transactions_bp = Blueprint('transactions', __name__,
-               template_folder='templates',
-               static_folder='../static',
-               static_url_path='assets')
-
-class AccountNotFoundError(Exception):
-    pass
-class TransactionError(Exception):
-    pass
-
-# Define forms to be used in all controllers
+## Forms
 def not_zero(form, field):
     if field.data == 0:
         raise ValidationError('Amount cannot be zero')
@@ -67,6 +56,18 @@ class SubaccountTransferForm(TransactionForm):
     def __init__(self, *args, **kwargs):
         super(SubaccountTransferForm, self).__init__(*args, **kwargs)
         del self.category
+
+## Exceptions / errors
+class AccountNotFoundError(Exception):
+    pass
+class TransactionError(Exception):
+    pass
+
+## Routes
+transactions_bp = Blueprint('transactions', __name__,
+               template_folder='templates',
+               static_folder='../static',
+               static_url_path='assets')
 
 @transactions_bp.route("/accounts/<int:account_id>/transactions", methods=["POST"])
 def create(account_id):
@@ -124,7 +125,6 @@ def create_subaccount_transfer(sender_account_id):
         flash(str(e), "error")
         return redirect(url_for("accounts.show", account_id=sender_account_id))
 
-
 @transactions_bp.route('/download_csv', methods=['POST'])
 def download_csv():
     try:
@@ -169,6 +169,7 @@ def download_csv():
     except:
         flash('Successfully went wrong while downloading csv.', "error")
         return redirect(url_for("accounts.show", account_id=1))
+
 
 
 ## Subfunctions

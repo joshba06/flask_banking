@@ -110,16 +110,13 @@ def show(account_id, transactions_filter=None):
     # New transaction form
     transaction_form = TransactionForm()
 
-    # Subaccount transfer form (populate "choices" here to avoid error due to import order (form accesses Account.query))
+    # Subaccount transfer form
+    from project.transactions.transactions import update_transfer_form
     subaccount_transfer_form = SubaccountTransferForm()
-    for account in all_accounts:
-        if account.id != account_id:
-            subaccount_transfer_form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
-
-    # Update the AnyOf validator for the recipient field
-    recipient_values = [choice for choice in subaccount_transfer_form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
-    subaccount_transfer_form.recipient.validators.append(AnyOf(recipient_values))
-
+    message, status = update_transfer_form(subaccount_transfer_form, account_id)
+    if status == "error":
+        flash(message, status)
+        return redirect(url_for("accounts.index"))
 
     # Currency value formatting function to get format: 123.123,00
     def format_currency(value):
@@ -147,7 +144,6 @@ def show(account_id, transactions_filter=None):
             formatted_value = "-" + formatted_value
 
         return formatted_value
-
 
     # Create new account / edit account details form
     account_form = AccountForm()
