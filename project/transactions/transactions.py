@@ -102,7 +102,6 @@ def create_subaccount_transfer(sender_account_id):
     try:
         sender_account = validate_account(sender_account_id)
 
-
         message, status = update_transfer_form(transfer_form, sender_account.id)
 
         recipient_account_title, recipient_fractional_iban = validate_transfer_data(transfer_form)
@@ -237,6 +236,7 @@ def update_transfer_form(form, sender_account_id):
 def validate_transfer_data(form):
     # Evaluate data received from form
     if not form.validate(): # Validates reference max length, recipient(that it cannot be "Recipient" too), amount(can be string digits, cannot be = 0)
+        print(form.errors)
         raise ValueError('Form data is not valid.')
     else:
         recipient_title = form.recipient.data.split("(")[0].strip()

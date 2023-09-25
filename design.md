@@ -25,7 +25,7 @@ Subaccount transfer
   -> Gray out form in front end
     -> Route won't exist
   -> API doesnt use form
-
+- "Category" field isnt tested, because validation is successfull even if "Category" exists in data but is not required by form
 
 Tables:
 1 accounts:

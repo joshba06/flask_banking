@@ -216,17 +216,6 @@ def test_create_transaction_association_and_backgref(client_initialiser, first_a
     assert Transaction.query.filter(Transaction.account_id == second_account.id).all() == second_account.transactions.all()
 
 # create subaccount_tranfer route
-'''
-- Sender account invalid
-- Transfer form couldnt be updated (not enough accounts available?)
-- Transfer data couldnt be validated
-- Recipient account couldn'nt be found
-- Sender / Recipient transaction couldnt be processed, correct errors raised
-- Success, error redirects and flash messages
-
-- Sender / Recipient transaction have same amount different sign
-'''
-
 def test_create_subaccount_transfer_invalid_sender(client_initialiser, first_account):
     client = client_initialiser
 
@@ -240,8 +229,98 @@ def test_create_subaccount_transfer_invalid_sender(client_initialiser, first_acc
     assert 'Account not found.' in response.data.decode()
     assert response.request.path == f"/accounts/{first_account.id}"
 
-def test_create_subaccount_transfer_cannot_update_form():
-    '''If there is only one account, the transfer form'''
+def test_create_subaccount_transfer_invalid_form_data(client_initialiser, first_account, second_account, valid_and_invalid_transaction_data):
+    client = client_initialiser
+
+    recipient_valid_choice = f"{second_account.title} ({second_account.iban[:4]}...{second_account.iban[-2:]})"
+
+    # Assuming first_account and second_account exist (for redirect)
+    for description in valid_and_invalid_transaction_data["description"]["invalid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
+            "description": description["value"],
+            "amount": 123,
+            "recipient": recipient_valid_choice
+        }, follow_redirects=True)
+        assert 'Form data is not valid.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+    for amount in valid_and_invalid_transaction_data["amount"]["invalid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
+            "description": "Somedesc",
+            "amount": amount,
+            "recipient": recipient_valid_choice
+        }, follow_redirects=True)
+        assert 'Form data is not valid.' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+    # Ensure "Recipient" cannot be selected recipient
+    response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
+        "description": "Somedesc",
+        "amount": 123,
+        "recipient": "Recipient"
+    }, follow_redirects=True)
+
+    assert 'Form data is not valid.' in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_create_subaccount_transfer_invalid_recipient(client_initialiser, first_account, second_account, valid_and_invalid_transaction_data):
+    client = client_initialiser
+
+    response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
+        "description": "Valid description",
+        "amount": 123,
+        "recipient": "Invalid recipient"
+    }, follow_redirects=True)
+
+    assert 'Form data is not valid.' in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_create_subaccount_transfer_valid_form_data(client_initialiser, first_account, second_account, valid_and_invalid_transaction_data):
+    client = client_initialiser
+
+    recipient_valid_choice = f"{second_account.title} ({second_account.iban[:4]}...{second_account.iban[-2:]})"
+
+    for description in valid_and_invalid_transaction_data["description"]["valid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
+            "description": description,
+            "amount": 123,
+            "recipient": recipient_valid_choice
+        }, follow_redirects=True)
+        assert 'Successfully created transfer' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+    for amount in valid_and_invalid_transaction_data["amount"]["valid"]:
+        response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
+            "description": "Somedesc",
+            "amount": amount,
+            "recipient": recipient_valid_choice
+        }, follow_redirects=True)
+        assert 'Successfully created transfer' in response.data.decode()
+        assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_create_subaccount_transfer_valid_result_both_ends(client_initialiser, first_account, second_account, valid_and_invalid_transaction_data):
+    client = client_initialiser
+
+    # Ensure both accounts do not have any transactions
+    assert first_account.transactions.count() == 0
+    assert second_account.transactions.count() == 0
+
+    response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
+        "description": "Testing transfer",
+        "amount": 150,
+        "recipient": f"{second_account.title} ({second_account.iban[:4]}...{second_account.iban[-2:]})"
+    }, follow_redirects=True)
+    assert 'Successfully created transfer' in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
+    outgoing_transaction = first_account.transactions.all()[-1]
+    incoming_transaction = second_account.transactions.all()[-1]
+
+    assert outgoing_transaction.description == incoming_transaction.description
+    assert (outgoing_transaction.category == incoming_transaction.category) and (outgoing_transaction.category == "Transfer")
+    assert outgoing_transaction.amount == -(incoming_transaction.amount) and (outgoing_transaction.amount == -150)
+    assert outgoing_transaction.saldo == -(incoming_transaction.saldo) and (outgoing_transaction.saldo == -150)
+
 
 ## API tests
 # create
@@ -418,169 +497,5 @@ def test_api_create_negative_saldo_possible(first_account, client_initialiser, v
         assert response.json["saldo"] == sum(amounts[:i+1])
     assert first_account.transactions.all()[-1].saldo == -250
 
-
-
 # create subaccount transfer
 
-def test_api_create_transfer_invalid():
-    pass
-
-
-
-
-
-
-# def test_saldo_calculation_with_empty_unordered_dates(db_initialiser):
-#     # Test saldo calculation when the database is empty (should be the same as the transaction amount)
-#     Account, Transaction, db_session = db_initialiser
-#     account = Account(title="Jane's Savings", iban="DE6543210987654321")
-
-#     transactions = [
-#         Transaction("Transaction 1", 50.00, "Salary", date_booked=datetime(2023,8,15,15,0,0)), # First added, last in time
-#         Transaction("Transaction 2", -100.00, "Rent", date_booked=datetime(2023,8,15,12,0,0)),
-#         Transaction("Transaction 3", 300.00, "Salary", date_booked=datetime(2023,8,15,10,0,0)) # Last added, first in time
-#     ]
-#     account.transactions = transactions
-#     db_session.add(account)
-#     db_session.commit()
-#     db_session.expire_all()
-
-#     queried_transactions = db_session.query(Transaction).all()
-
-#     for transaction in queried_transactions:
-#         transaction.calculate_saldo()
-
-#     assert round(transactions[0].saldo, 2) == Decimal('250')
-#     assert round(transactions[1].saldo, 2) == Decimal('200')
-#     assert round(transactions[2].saldo, 2) == Decimal('300')
-
-
-## API tests
-# Add fixture for same invalid / valid data as in web routes
-
-# Saldo is added correctly to response
-
-
-# # Functional
-# # Include transfer can only be made to other account, not same account
-# # Subaccount transfer
-
-
-
-# def test_create_invalid_transaction(client_initialiser, first_account):
-#     client = client_initialiser
-
-#     # Invalid description tests
-#     scenarios = [
-#         {
-#             "description": 12345,  # not a string
-#             "amount": 100,
-#             "category": "Transfer",
-#             "error_message": "Invalid form submission."
-#         },
-#         {
-#             "description": "a" * 81,  # string too long
-#             "amount": 100,
-#             "category": "Transfer",
-#             "error_message": "Invalid form submission."
-#         },
-#         {
-#             "description": "Test",
-#             "amount": "abc",  # not a valid number
-#             "category": "Transfer",
-#             "error_message": "Invalid form submission."
-#         },
-#         {
-#             "description": "Test",
-#             "amount": 100,
-#             "category": "InvalidCategory",  # not a valid category
-#             "error_message": "Invalid form submission."
-#         },
-#         {
-#             "description": "Test",
-#             "amount": 100,
-#             "category": "Transfer",
-#             "date_booked": "not a datetime",  # not a valid datetime
-#             "error_message": "Invalid form submission."
-#         }
-#     ]
-
-#     for scenario in scenarios:
-#         form_data = {
-#             "description": scenario["description"],
-#             "amount": scenario["amount"],
-#             "category": scenario["category"]
-#         }
-#         if "date_booked" in scenario:
-#             form_data["date_booked"] = scenario["date_booked"]
-
-#         response = client.post(f'/accounts/{first_account.id}/transactions/create', data=form_data, follow_redirects=True)
-
-#         # Check for the specific error message that we expect for each scenario
-#         assert scenario["error_message"] in response.data.decode()
-#         assert response.request.path == f"/accounts/{first_account.id}"
-
-# def test_invalid_sender_account(client_initialiser):
-#     client = client_initialiser
-#     response = client.post("/accounts/999/transactions/create_subaccount_transfer", follow_redirects=True)  # 999 is a non-existent ID
-
-#     assert "Could not find sender account." in response.data.decode()
-
-#     # Ensure first redirect is to accounts index page
-#     assert response.history[1].request.path == f"/accounts"
-
-# def test_no_recipient_account_found(client_initialiser, first_account):
-#     client = client_initialiser
-
-#     response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
-#         'recipient': 'NonExistent Account (FRXX XX99)',
-#         'amount': 50,
-#         'description': 'Test transfer'
-#     }, follow_redirects=True)
-
-#     assert "Recipient account not found." in response.data.decode()
-#     # Ensure redirect is made to first account show page
-#     assert response.request.path == f"/accounts/{first_account.id}"
-
-# def test_invalid_transfer_amount(client_initialiser, second_account):
-#     response = client_initialiser.post("/accounts/1/transactions/create_subaccount_transfer", data={
-#         'recipient': f"{second_account.title} ({second_account.iban[:4]}...{second_account.iban[-2:]})",
-#         'amount': -10,
-#         'description': 'Test transfer'
-#     })
-#     assert b'Invalid transfer amount.' in response.data
-
-
-# # def test_valid_transfer(client_initialiser, first_account, second_account, db_initialiser):
-# #     Account, Transaction, db_session = db_initialiser
-# #     client = client_initialiser
-
-# #     # Ensure balance of first account will cover subaccount transfer
-# #     response = client.post(f'/accounts/{first_account.id}/transactions/create', data={
-# #         'description': 'Sample transaction',
-# #         'amount': 100.5,
-# #         'category': 'Rent'
-# #     }, follow_redirects=True)
-
-# #     assert first_account.transactions.all()[-1].saldo > 50
-
-# #     num_transactions_first_acc = first_account.transactions.count()
-# #     num_transactions_second_acc = second_account.transactions.count()
-
-# #     # Assuming you have created sender and recipient accounts and their IDs are 1 and 2
-# #     response = client.post(f"/accounts/{first_account.id}/transactions/create_subaccount_transfer", data={
-# #         'recipient': f"{second_account.title} ({second_account.iban[:4]}...{second_account.iban[-2:]})",
-# #         'amount': 50,
-# #         'description': 'Test transfer'
-# #     })
-
-# #     # Enure transfer was successfully created
-# #     assert (num_transactions_first_acc + 1) == Account.query.get(first_account.id).transactions.count()
-# #     assert (num_transactions_second_acc + 1) == Account.query.get(second_account.id).transactions.count()
-
-# #     # Ensure first account was deducted the amount & second account was added the amount
-
-# #     # Ensure transaction description is "Test transfer" and "Category" is transfer
-
-# #     # Ensure redirect is to first account page
-# #     assert b'Successfully created new transfer.' in response.data
