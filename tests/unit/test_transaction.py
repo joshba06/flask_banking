@@ -213,6 +213,26 @@ def configure_transfer_form(app_initialiser, bulk_accounts):
 
         return form
 
+def test_update_transfer_form_one_account_diabled(app_initialiser, valid_account):
+    '''If only 1 account exists, tranfer form should be deactivated'''
+    app = app_initialiser[0]
+    Account = app_initialiser[1]
+    from project.transactions.transactions import update_transfer_form, SubaccountTransferForm
+
+    assert Account.query.count() == 1
+
+    with app.app_context():
+        form = SubaccountTransferForm()
+
+        message, status = update_transfer_form(form, valid_account.id)
+
+        assert status == "success"
+
+        assert 'disabled' in form.description.render_kw and form.description.render_kw['disabled'] == True
+        assert 'disabled' in form.amount.render_kw and form.amount.render_kw['disabled'] == True
+        assert 'disabled' in form.recipient.render_kw and form.recipient.render_kw['disabled'] == True
+        assert 'disabled' in form.submit.render_kw and form.submit.render_kw['disabled'] == True
+
 def test_update_transfer_form_success(configure_transfer_form):
     form = configure_transfer_form
     # Ensure default value is "Recipient" and sender account is not in choices

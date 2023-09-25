@@ -14,6 +14,19 @@ Manages the computation of the account balance.
 Enables filtering and grouping of transactions.
 
 3. Data Design:
+
+Forms
+Transfer
+
+Subaccount transfer
+- Default choice: "Recipient"
+- Entry: Anything else but "Recipient" allowed
+- Only one existing account?
+  -> Gray out form in front end
+    -> Route won't exist
+  -> API doesnt use form
+
+
 Tables:
 1 accounts:
 

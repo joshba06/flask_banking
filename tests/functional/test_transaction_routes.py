@@ -92,13 +92,9 @@ def bulk_transactions():
     return transactions
 
 ## Route tests
-# create route (simulating form submission)
-def test_invalid_form_data(client_initialiser, first_account, valid_and_invalid_transaction_data):
+# create transaction route (simulating form submission)
+def test_create_transaction_invalid_form_data(client_initialiser, first_account, valid_and_invalid_transaction_data):
     client = client_initialiser
-
-    # invalid_descriptions = ["A"*81, "", None] -> Changed for valid_and_invalid_transaction_data
-    # invalid_amounts = ["Invalid", None, 0] -> Changed for valid_and_invalid_transaction_data
-    # invalid_categories = ["Transfer", "Category", "Sports", "", None] -> Changed for valid_and_invalid_transaction_data
 
     for description in valid_and_invalid_transaction_data["description"]["invalid"]:
         response = client.post(f"/accounts/{first_account.id}/transactions", data={
@@ -127,7 +123,7 @@ def test_invalid_form_data(client_initialiser, first_account, valid_and_invalid_
         assert 'Form data is not valid.' in response.data.decode()
         assert response.request.path == f"/accounts/{first_account.id}"
 
-def test_create_transaction_for_non_existent_account(client_initialiser, first_account):
+def test_create_transaction_non_existent_account(client_initialiser, first_account):
     #Test trying to create a transaction for a non-existent account
     client = client_initialiser
 
@@ -139,12 +135,8 @@ def test_create_transaction_for_non_existent_account(client_initialiser, first_a
 
     assert 'Account not found.' in response.data.decode()
 
-def test_valid_data(client_initialiser, first_account, valid_and_invalid_transaction_data):
+def test_create_transaction_valid_data(client_initialiser, first_account, valid_and_invalid_transaction_data):
     client = client_initialiser
-
-    # valid_descriptions = ["Test", "A"] -> Replaced with data from valid_and_invalid_transaction_data
-    # valid_amounts = [123, "123", 1, 0.1, -70, 999] -> Replaced with data from valid_and_invalid_transaction_data
-    # valid_categories = ["Rent", "Utilities"] #-> "Transfer" category isnt available in form and is thus only checked for API through __ini__ method
 
     for description in valid_and_invalid_transaction_data["description"]["valid"]:
         response = client.post(f"/accounts/{first_account.id}/transactions", data={
@@ -173,7 +165,7 @@ def test_valid_data(client_initialiser, first_account, valid_and_invalid_transac
         assert 'Successfully created new transaction.' in response.data.decode()
         assert response.request.path == f"/accounts/{first_account.id}"
 
-def test_transaction_association_and_backgref(client_initialiser, first_account, second_account, bulk_transactions, db_initialiser):
+def test_create_transaction_association_and_backgref(client_initialiser, first_account, second_account, bulk_transactions, db_initialiser):
     client = client_initialiser
     Account, Transaction, db_session = db_initialiser
 
@@ -202,7 +194,7 @@ def test_transaction_association_and_backgref(client_initialiser, first_account,
     assert Transaction.query.filter(Transaction.account_id == first_account.id).all() == first_account.transactions.all()
 
 
-    # Add 4 transactions to secod account
+    # Add 4 transactions to second account
     for i in range(6,10):
         response = client.post(f"/accounts/{second_account.id}/transactions", data={
         "description": bulk_transactions[i]["description"],
@@ -223,6 +215,33 @@ def test_transaction_association_and_backgref(client_initialiser, first_account,
     # Ensure backref yields the same transactions
     assert Transaction.query.filter(Transaction.account_id == second_account.id).all() == second_account.transactions.all()
 
+# create subaccount_tranfer route
+'''
+- Sender account invalid
+- Transfer form couldnt be updated (not enough accounts available?)
+- Transfer data couldnt be validated
+- Recipient account couldn'nt be found
+- Sender / Recipient transaction couldnt be processed, correct errors raised
+- Success, error redirects and flash messages
+
+- Sender / Recipient transaction have same amount different sign
+'''
+
+def test_create_subaccount_transfer_invalid_sender(client_initialiser, first_account):
+    client = client_initialiser
+
+    response = client.post(f"/accounts/99/transactions/create_subaccount_transfer", data={
+        "description": "Transfer",
+        "amount": 123,
+        "recipient": "Transfer"
+    }, follow_redirects=True)
+
+    # If sender account isnt found, ensure redirect to index page occurs
+    assert 'Account not found.' in response.data.decode()
+    assert response.request.path == f"/accounts/{first_account.id}"
+
+def test_create_subaccount_transfer_cannot_update_form():
+    '''If there is only one account, the transfer form'''
 
 ## API tests
 # create

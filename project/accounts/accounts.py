@@ -113,10 +113,12 @@ def show(account_id, transactions_filter=None):
     # Subaccount transfer form
     from project.transactions.transactions import update_transfer_form
     subaccount_transfer_form = SubaccountTransferForm()
+    
     message, status = update_transfer_form(subaccount_transfer_form, account_id)
     if status == "error":
         flash(message, status)
         return redirect(url_for("accounts.index"))
+
 
     # Currency value formatting function to get format: 123.123,00
     def format_currency(value):
@@ -144,6 +146,7 @@ def show(account_id, transactions_filter=None):
             formatted_value = "-" + formatted_value
 
         return formatted_value
+
 
     # Create new account / edit account details form
     account_form = AccountForm()

@@ -102,6 +102,7 @@ def create_subaccount_transfer(sender_account_id):
     try:
         sender_account = validate_account(sender_account_id)
 
+
         message, status = update_transfer_form(transfer_form, sender_account.id)
 
         recipient_account_title, recipient_fractional_iban = validate_transfer_data(transfer_form)
@@ -119,7 +120,7 @@ def create_subaccount_transfer(sender_account_id):
         return redirect(url_for("accounts.show", account_id=sender_account_id))
 
     except AccountNotFoundError as ae:
-        flash(str(e), "error")
+        flash(str(ae), "error")
         return redirect(url_for("accounts.index"))
     except (NoResultFound, TransactionError, ValueError) as e:
         flash(str(e), "error")
@@ -213,14 +214,21 @@ def validate_account(account_id):
 
 def update_transfer_form(form, sender_account_id):
     try:
-        for account in Account.query.all():
-            if account.id != sender_account_id:
-                form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
+        all_accounts = Account.query.all()
+        if len(all_accounts) == 1:
+            # If only one account exists, disable all fields (no transfer destination available)
+            for field in form:
+                field.render_kw = {**field.render_kw, 'disabled': True} if field.render_kw else {'disabled': True}
 
-        # Update the (AnyOf) validators for the recipient field
-        form.recipient.validators = [DataRequired()]
-        recipient_values = [choice for choice in form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
-        form.recipient.validators.append(AnyOf(recipient_values))
+        else:
+            for account in all_accounts:
+                if account.id != sender_account_id:
+                    form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
+
+            # Update the (AnyOf) validators for the recipient field
+            form.recipient.validators = [DataRequired()]
+            recipient_values = [choice for choice in form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
+            form.recipient.validators.append(AnyOf(recipient_values))
     except Exception:
         return "Could not update transfer form.", "error"
     else:
