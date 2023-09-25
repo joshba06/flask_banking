@@ -215,7 +215,9 @@ def update_transfer_form(form, sender_account_id):
         for account in Account.query.all():
             if account.id != sender_account_id:
                 form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
-        # Update the AnyOf validator for the recipient field
+
+        # Update the (AnyOf) validators for the recipient field
+        form.recipient.validators = [DataRequired()]
         recipient_values = [choice for choice in form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
         form.recipient.validators.append(AnyOf(recipient_values))
     except Exception:
@@ -225,8 +227,7 @@ def update_transfer_form(form, sender_account_id):
 
 def validate_transfer_data(form):
     # Evaluate data received from form
-    if not form.validate(): # Validates reference max length, recipient(that it cannot be "Recipient" too), amount(can be string digits, cannot be =0)
-        print(form.errors)
+    if not form.validate(): # Validates reference max length, recipient(that it cannot be "Recipient" too), amount(can be string digits, cannot be = 0)
         raise ValueError('Form data is not valid.')
     else:
         recipient_title = form.recipient.data.split("(")[0].strip()

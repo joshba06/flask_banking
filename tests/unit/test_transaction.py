@@ -207,7 +207,6 @@ def configure_transfer_form(app_initialiser, bulk_accounts):
 
     with app.app_context():
         form = SubaccountTransferForm()
-        print(Account.query.count())
 
         message, status = update_transfer_form(form, sender_account.id)
         assert status == "success"
@@ -244,7 +243,7 @@ def test_validate_transfer_data_invalid_recipient_format(configure_transfer_form
 
     invalid_formats = [" ", "Invalid Format", None, "Main (DE89...00", "Savings DE89...01)", "Shared(DE89...03)", "Main(DE89..00)"]
 
-    # Starts with form with choices and validation added. Sender account has iban DE89370400440532013002
+    # Starts form with choices and validation added. Sender account has iban DE89370400440532013002
     subaccount_transfer_form = configure_transfer_form
 
     # Fill form with valid data

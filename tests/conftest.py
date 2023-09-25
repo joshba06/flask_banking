@@ -53,9 +53,9 @@ def model_initialiser(app_initialiser):
 
 @pytest.fixture()
 def db_initialiser(app_initialiser):
-    print("Running db initialiser")
     _, Account, Transaction, db_session = app_initialiser
     Account.query.delete()
     Transaction.query.delete()
     db_session.commit()
+    print(f"DB initialiser. Num transactions: {Transaction.query.count()}")
     return Account, Transaction, db_session
