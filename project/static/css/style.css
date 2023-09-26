@@ -50,10 +50,20 @@
 .accounts-heading {
   width: 90%;
   margin: 2rem auto;
-  text-align: center;
   display: flex;
-  justify-content: flex-start;
-  align-items: center;
+  justify-content: space-between;
+  .account-actions {
+    text-align: center;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+  }
+  .api-link {
+    text-align: center;
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+
 }
 
 .accounts-heading h1 {

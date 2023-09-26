@@ -7,8 +7,14 @@ Joshba06 Banking
 {% block content %}
 
 <div class="accounts-heading">
-  <h1>Your Accounts</h1>
-  <a href="#" id="showNewAccountBtn" class="btn btn-outline-primary">New Account +</a>
+  <div class="account-actions">
+    <h1>Your Accounts</h1>
+    <a href="#" id="showNewAccountBtn" class="btn btn-outline-primary">New Account +</a>
+  </div>
+  <div class="api-link">
+    <a href="/api/ui" class="btn btn-sm btn-outline-info">API</a>
+  </div>
+
 </div>
 <div class="accounts-selector">
   {% for account in accounts %}
