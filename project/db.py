@@ -10,6 +10,8 @@ from pprint import pprint
 
 from project import app
 
+
+
 engine = create_engine(app.app.config["DATABASE_URL"])
 
 db_session = scoped_session(sessionmaker(autocommit=False,
