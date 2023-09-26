@@ -1,0 +1,327 @@
+{% extends 'main/base.html' %}
+
+{% block title %}
+Joshba06 Banking
+{% endblock %}
+
+{% block content %}
+
+<div class="accounts-heading">
+  <div class="account-actions">
+    <h1>Your Accounts</h1>
+    <a href="#" id="showNewAccountBtn" class="btn btn-outline-primary">New Account +</a>
+  </div>
+  <div class="api-link">
+    <a href="/api/ui" class="btn btn-sm btn-outline-info">API</a>
+  </div>
+
+</div>
+<div class="accounts-selector">
+  {% for account in accounts %}
+    <div class="account-shell" id="{{ 'active-account' if account.id == active_account_id }}">
+      <a class="card-account" href="{{ url_for('accounts.show', account_id=account.id) }}">
+        <div class="top">
+          <div class="logo"><i class="fas fa-regular fa-credit-card"></i></div>
+          <div class="account-iban">{{account.iban[:5]}}...{{account.iban[-2:]}}</div>
+        </div>
+        <div class="middle account-title">
+          {{account.title}}
+        </div>
+        <div class="bottom account-saldo">
+          {{ format_currency(account_saldos[account.id]) }} €
+        </div>
+      </a>
+      <div class="account-options">
+        {% if account.id == active_account_id %}
+          <a href="#" id="showEditAccountBtn"><img src="{{url_for('static', filename='images/pen-to-square-solid.svg')}}" class="custom-icon icon-primary"></a>
+        {% endif %}
+      </div>
+    </div>
+
+  {% endfor%}
+</div>
+<div class="activities-heading">
+  <h1>Recent Activities</h1>
+</div>
+<div class="activities-menu">
+
+  <div class="activities-filter">
+    <form action="{{ url_for('accounts.show', account_id=active_account_id) }}" method="post" class="form-inline" id="filter-transaction">
+      {{ filter_form.hidden_tag() }}
+
+      <div class="input-group input-group-sm mr-2">
+        {{ filter_form.start_date(class_="form-control",  aria_describedby="inputGroup-sizing-sm") }}
+        <div class="input-group-prepend">
+          <div class="input-group-text" id="inputGroup-sizing-sm">To</div>
+        </div>
+        {{ filter_form.end_date(class_="form-control", aria_describedby="inputGroup-sizing-sm") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        <div class="input-group-prepend">
+          {{ filter_form.search_type(class_="btn btn-outline-secondary dropdown-toggle") }}
+        </div>
+        {{ filter_form.transaction_description(id="autocomplete", class_="form-control") }}
+      </div>
+
+      <div class="input-group input-group-sm mr-2">
+        {{ filter_form.category(class_="form-control") }}
+      </div>
+
+      {{ filter_form.submit(class_="btn btn-sm btn-primary mr-2") }}
+      {{ filter_form.clear(class_="btn btn-sm btn-outline-secondary") }}
+    </form>
+
+  </div>
+
+  <div class="activities-menu-separator"></div>
+  <div class="activities-actions">
+    <div class="btn-group" role="group"">
+      <button type="button" id="show-new-transaction-field" class="btn btn-sm btn-primary" style="margin-right:2px;"><img src="{{url_for('static', filename='images/new-transfer.svg')}}" class="custom-icon icon-white mr-1">Transfer</button>
+
+      <form action="{{ url_for('transactions.download_csv') }}" method="POST">
+        <input type="hidden" name="account_id" value="{{ active_account_id }}">
+        <input type="hidden" name="start_date" value="{{ filter_form.start_date.data }}">
+        <input type="hidden" name="end_date" value="{{ filter_form.end_date.data }}">
+        <input type="hidden" name="transaction_description" value="{{ filter_form.transaction_description.data }}">
+        <input type="hidden" name="search_type" value="{{ filter_form.search_type.data }}">
+        <button type="submit" class="btn btn-sm btn-primary"><img src="{{url_for('static', filename='images/download-solid.svg')}}" class="custom-icon icon-white mr-1">Export</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="new-transaction-div" style="display:none;">
+  <div class="cancel-button">
+    <a href="#" id="btn-cancel-add-transaction" class="btn btn-sm btn-outline-danger">Cancel</a>
+  </div>
+  <div class="forms">
+    <div class="standard-payment">
+      <div class="section-title">STANDARD PAYMENT</div>
+      <form action="{{ url_for('transactions.create', account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-standard-payment">
+        {{ transaction_form.hidden_tag() }}
+
+        <div class="input-group input-group-sm mr-2">
+          {{ transaction_form.description(class_="form-control", aria_describedby="inputGroup-sizing-sm", id="new-transaction-description") }}
+        </div>
+
+        <div class="input-group input-group-sm mr-2">
+          {{ transaction_form.category(class_="custom-select" ,id="new-transaction-category") }}
+        </div>
+
+
+        <div class="input-group input-group-sm mr-2">
+          {{ transaction_form.amount(class_="form-control", style="width:100px", id="new-transaction-amount") }}
+        </div>
+
+        <div class="input-group input-group-sm mr-2">
+          {{ transaction_form.submit(class_="btn btn-sm btn-success") }}
+        </div>
+      </form>
+    </div>
+    <div class="subaccount-transfer">
+      <div class="section-title">SUBACCOUNT TRANSFER</div>
+      <form action="{{ url_for('transactions.create_subaccount_transfer', sender_account_id=active_account_id) }}" method="post" class="form-inline needs-validation form-subaccount-transfer">
+        {{ subaccount_transfer_form.hidden_tag() }}
+        <div class="input-group input-group-sm mr-2">
+          {{ subaccount_transfer_form.description(class_="form-control",  aria_describedby="inputGroup-sizing-sm", id="new-transfer-description") }}
+        </div>
+        <div class="input-group input-group-sm mr-2">
+          {{ subaccount_transfer_form.recipient(class_="custom-select", id="new-transfer-recipient") }}
+        </div>
+        <div class="input-group input-group-sm mr-2">
+          {{ subaccount_transfer_form.amount(class_="form-control", style="width:100px", id="new-transfer-amount") }}
+        </div>
+        <div class="input-group input-group-sm mr-2">
+          {{ subaccount_transfer_form.submit(class_="btn btn-sm btn-success") }}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="activities-content-infotext d-flex justify-content-center align-items-center my-3">
+  <div class="spacer col-4 mx-3"></div>
+  <span id="filterInfoText">
+    Displaying:
+    {% if transactions_filter == "cleared" %}
+    All Transactions
+    {% elif transactions_filter == "default_30_days" %}
+    Last 30 days (default)
+    {% else %}
+    Custom Filter
+    {% endif %}
+  </span>
+  <div class="spacer col-4 mx-3"></div>
+</div>
+
+<div class="activities-content">
+  <div class="activities-table">
+    <table class="table">
+      <thead class="thead-light">
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Description</th>
+          <th scope="col">Category</th>
+          <th scope="col" class="text-center">Amount</th>
+          <th scope="col" class="text-center">Saldo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if transaction_statistics['num_transactions'] == 0 %}
+        <tr>
+          <td></td>
+          <td></td>
+          <td>No transactions found</td>
+          <td></td>
+          <td></td>
+        </tr>
+        {% else %}
+          {% for transaction in transactions %}
+            <tr>
+              <td>{{ transaction.utc_datetime_booked.strftime("%d/%m/%y") }}</td>
+              <td>{{ transaction.description }}</td>
+              <td>{{ transaction.category }}</td>
+              <td class="text-right">{{ format_currency(transaction.amount) }} €</td>
+              <td class="text-right">{{ format_currency(transaction.saldo) }} €</td>
+            </tr>
+          {% endfor%}
+          <tr>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td class="text-right" style="font-weight: bold">Sum: {{ format_currency(transactions_table_sum) }} €</td>
+            <td></td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+  </div>
+  <div class="activities-analytics">
+    <div class="card-income">
+      <div class="card-title">Income <img src="{{url_for('static', filename='images/arrow-trend-up-solid.svg')}}" class="custom-icon icon-green mr-1"></div>
+      <div class="card-content">{{ format_currency(transaction_statistics['income']) }}€</div>
+    </div>
+    <div class="card-expenses">
+      <div class="card-title">Expenses <img src="{{url_for('static', filename='images/arrow-trend-down-solid.svg')}}" class="custom-icon icon-red mr-1"></div>
+      <div class="card-content">{{ format_currency(transaction_statistics['expenses']) }}€</div>
+    </div>
+    <div class="more-analytics">
+      <a href="#">More analytics <img src="{{url_for('static', filename='images/circle-right-regular.svg')}}" class="custom-icon icon-primary mr-1"></a>
+    </div>
+  </div>
+</div>
+
+<!-- New Account Modal Overlay -->
+<div id="overlay_new_account">
+  <div class="d-flex justify-content-center align-items-center" style="height: 100%;">
+      <div class="card-new-account col-4">
+          <button id="closeNewAccountBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+          <h4 class="mb-4" style="text-align: center;">New Account</h4>
+          <div class="form-content">
+            <form id="newAccountForm" class="col-12" action="{{ url_for('accounts.create') }}", method="post">
+              {{ account_form.hidden_tag() }}
+              <!-- Title -->
+              <div class="form-group col-12">
+                <label for="newAccountTitleInput">Title</label>
+                {{ account_form.title(class_="form-control", id="newAccountTitleInput") }}
+              </div>
+              <!-- Icon (coming soon) -->
+              <div class="form-group col-12">
+                <label for="disabledSelect">Icon</label>
+                <select id="disabledSelect" class="form-control" disabled>
+                  <option selected>Coming soon...</option>
+                </select>
+              </div>
+              <!-- IBAN (coming soon) -->
+              <div class="form-group col-12">
+                <label for="disabledSelect">Iban</label>
+                <select id="disabledSelect" class="form-control" disabled>
+                  <option selected>Coming soon...</option>
+                </select>
+              </div>
+              <div class="form-group col-12">
+                <div class="form-check p-0">
+                  {{ account_form.accept_terms(id="invalidCheck")}}
+                  <label class="form-check-label" for="invalidCheck">
+                    Agree to terms and conditions
+                  </label>
+                </div>
+              </div>
+              <div class="d-flex justify-content-center">
+                {{ account_form.submit(class_="btn btn-primary") }}
+              </div>
+            </form>
+          </div>
+      </div>
+  </div>
+</div>
+
+<div id="overlay_edit_account">
+  <div class="d-flex justify-content-center align-items-center" style="height: 100%;">
+      <div class="card-edit-account col-4">
+          <button id="closeEditAccountBtn" class="btn btn-sm btn-outline-secondary">&times;</button>
+          <h4 class="mb-4" style="text-align: center;">Edit Account</h4>
+          <div class="form-content">
+            <form id="editAccountForm" class="col-12" action="{{ url_for('accounts.update', account_id=active_account_id) }}", method="post">
+              {{ edit_account_form.hidden_tag() }}
+              <!-- Title -->
+              <div class="form-group col-12">
+                <label for="editAccountTitleInput">Title</label>
+                {{ edit_account_form.title(class_="form-control", id="editAccountTitleInput") }}
+              </div>
+              <!-- Icon (coming soon) -->
+              <div class="form-group col-12">
+                <label for="disabledSelect">Icon</label>
+                <select id="disabledSelect" class="form-control" disabled>
+                  <option selected>Coming soon...</option>
+                </select>
+              </div>
+              <!-- IBAN (coming soon) -->
+              <div class="form-group col-12">
+                <label for="disabledSelect">Iban</label>
+                <select id="disabledSelect" class="form-control" disabled>
+                  <option selected>Coming soon...</option>
+                </select>
+              </div>
+              <div class="d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary">Update</button>
+              </div>
+            </form>
+            <form id="deleteAccountForm" class="col-12" action="{{ url_for('accounts.delete', account_id=active_account_id) }}", method="post">
+              {{ delete_account_form.hidden_tag() }}
+              <div class="d-flex justify-content-center align-items-center py-4">
+                <div class="spacer col-4" style="border-bottom: 0.5px solid grey;"></div>
+                <div class="px-2" style="color: grey;">Danger</div>
+                <div class="spacer col-4" style="border-bottom: 0.5px solid grey;"></div>
+              </div>
+              <div class="d-flex justify-content-center">
+                <button id="delete-account-btn" type="submit" class="btn btn-sm btn-danger">Delete Account</button>
+              </div>
+            </form>
+          </div>
+      </div>
+  </div>
+</div>
+
+
+
+
+<!-- JavaScript -->
+<!-- jQuery first, then Popper.js, then Bootstrap JS -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+<!-- Autocomplete -->
+<script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+<script> var unique_descriptions = JSON.parse('{{ autocomplete_descriptions|tojson|safe }}');</script>
+
+<!-- Dynamic buttons / add transaction form -->
+<script src="{{ url_for('static', filename='js/button_actions.js') }}"></script>
+
+<!-- Account actions -->
+<script src="{{ url_for('static', filename='js/account_actions.js') }}"></script>
+
+{% endblock %}

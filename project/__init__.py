@@ -1,5 +1,6 @@
 import connexion
 from pprint import pprint
+from flask import jsonify
 
 app = None
 
@@ -23,8 +24,12 @@ def create_app(test_setup=False):
         print("__________[APP] TEST SETUP__________")
         app.config.update({
             "TESTING": True,
+            'WTF_CSRF_ENABLED': False
         })
     init_db()
+
+    from project.accounts.accounts import accounts_bp
+    app.register_blueprint(accounts_bp, url_prefix='/')
 
     from project.transactions.transactions import transactions_bp
     app.register_blueprint(transactions_bp, url_prefix='/')

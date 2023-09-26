@@ -1,280 +1,270 @@
-# Flask
+## Imports
 from flask import (
-    Blueprint, redirect, render_template, request, url_for, jsonify, abort
+    Blueprint, redirect, url_for, jsonify, abort, request, flash
 )
+from sqlalchemy.orm.exc import NoResultFound
+
+# CSV download
+import csv
+from io import StringIO
+from werkzeug.wrappers import Response
 
 # Forms
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField, DecimalField, DateField, SelectField
-from wtforms.validators import DataRequired
-
-# Graphs
-import plotly
-import plotly.graph_objects as go
-import json
+from wtforms import StringField, SubmitField, DecimalField, SelectField
+from wtforms.validators import DataRequired, Length, AnyOf, ValidationError
 
 # Basics
-from datetime import datetime, date
+from datetime import datetime
 from pprint import pprint
 
 # Models
-from project.models import Transaction
+from project.models import Account, Transaction
 from project.db import db_session
 
+## Forms
+def not_zero(form, field):
+    if field.data == 0:
+        raise ValidationError('Amount cannot be zero')
 
-# Define the name of this blueprint and which url its reached under. This has to be registered in create_app()
+def not_empty_string(form, field):
+    if len(field.data.strip()) < 3:
+        raise ValidationError('Description too short (consider whitespaces)')
+
+class TransactionForm(FlaskForm):
+    description = StringField("Transaction description",
+                              validators=[DataRequired(), Length(max=80), not_empty_string],
+                              render_kw={"placeholder": "Reference"})
+    choices = ["Category", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]
+    category = SelectField("Category",
+                           choices = choices,
+                           validators=[
+                                DataRequired(),
+                                AnyOf(choices[1:])
+                               ])
+    amount = DecimalField("Amount",
+                          places=2,
+                          validators=[DataRequired(), not_zero],
+                          render_kw={"placeholder": "Amount"}
+                          )
+    submit = SubmitField("Add")
+
+class SubaccountTransferForm(TransactionForm):
+    recipient = SelectField("Recipient", choices = ["Recipient"], validators=[DataRequired()], render_kw={"placeholder": "Recipient"})
+
+    # Remove "category" from form
+    def __init__(self, *args, **kwargs):
+        super(SubaccountTransferForm, self).__init__(*args, **kwargs)
+        del self.category
+
+## Custom exceptions
+class TransactionError(Exception):
+    def __init__(self, message="A transaction error occurred"):
+        self.message = message
+        super().__init__(self.message)
+
+## Routes
 transactions_bp = Blueprint('transactions', __name__,
                template_folder='templates',
                static_folder='../static',
                static_url_path='assets')
 
-# Define forms to be used in this controller
-class TransactionForm(FlaskForm):
-    description = StringField("Transaction description", validators=[DataRequired()], render_kw={"placeholder": "Description"})
-    category = SelectField("Category", choices = ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"])
-    amount = DecimalField("Amount", places=2, validators=[DataRequired()], render_kw={"placeholder": "Amount"})
-    submit = SubmitField("Add")
+@transactions_bp.route("/accounts/<int:account_id>/transactions", methods=["POST"])
+def create(account_id):
+    # Local imports to avoid import order error
+    from project.accounts.accounts import AccountNotFoundError, validate_account
 
-class FilterForm(FlaskForm):
-    search_type = SelectField('Search type', choices = ["Matches", "Includes"])
-    transaction_description = StringField("Description", render_kw={"placeholder": "Filter description"})
-    category = SelectField("Category", choices = ["-Category-", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"])
-    start_date = DateField('Startdate', format='%Y-%m-%d')
-    end_date = DateField('Enddate', format='%Y-%m-%d')
-    submit = SubmitField("Filter")
-    clear = SubmitField("Clear")
-
-
-## App routes
-@transactions_bp.route("/", methods=["GET", "POST"])
-def index():
-
-    # Transactions filter
-    filter_form = FilterForm()
-    if request.method == 'POST' and filter_form.clear.data:
-        return redirect(url_for("transactions.index"))
-    elif request.method == 'POST' and filter_form.submit.data:
-        category = None if filter_form.category.data == "-Category-" else filter_form.category.data
-        transactions = Transaction.read_all(start_date = filter_form.start_date.data,
-                                             end_date=filter_form.end_date.data,
-                                             category=category,
-                                             search_type=filter_form.search_type.data,
-                                             transaction_description=filter_form.transaction_description.data)
-        grouped_transactions = Transaction.group_by_month(transactions)
-    else:
-        transactions = Transaction.read_all()
-        grouped_transactions = Transaction.group_by_month(transactions)
-
-    # New transaction
     transaction_form = TransactionForm()
-    if transaction_form.validate_on_submit():
-        new_transaction = Transaction(transaction_form.description.data, transaction_form.amount.data, transaction_form.category.data)
+    if not transaction_form.validate(): # Validates title max length, category(that it cannot be "Category" too), amount(can be string digits, cannot be <=0)
+        message = 'Form data is not valid.'
+        status = "error"
+    else:
         try:
-            db_session.add(new_transaction)
-            db_session.commit()
-            new_transaction.calculate_saldo()
-            return redirect(url_for("transactions.index"))
-        except:
-            print("Something went wrong")
+            account = validate_account(account_id)
+        except AccountNotFoundError as e:
+            message = 'Account not found.'
+            status = "error"
+        else:
+            status, message, _ = create_transaction(account=account,
+                                                 description=transaction_form.description.data,
+                                                 amount=transaction_form.amount.data,
+                                                 category=transaction_form.category.data)
+    flash(message, status)
 
-
-    transactions_sum = 0
-    descriptions = []
-    for transaction in transactions:
-        descriptions.append(transaction.description)
-        transactions_sum += transaction.amount
-    unique_descriptions = list(set(descriptions))
-
-    ## Display graphs
-    # Prepare data for charts
-    data_y = []
-    data_pos = []
-    data_neg = []
-    data_sum = []
-    if len(transactions) > 0:
-        first_date = date(min(grouped_transactions.keys()), min(grouped_transactions[min(grouped_transactions.keys())].keys()), 1)
-        last_date = date(max(grouped_transactions.keys()), max(grouped_transactions[max(grouped_transactions.keys())].keys()), 1)
-        current_date = first_date
-
-        while current_date <= last_date:
-            if current_date.month < 10:
-                data_y.append("0{}/{}".format(current_date.month, current_date.year))
-            else:
-                data_y.append("{}/{}".format(current_date.month, current_date.year))
-
-            if current_date.year in grouped_transactions.keys():
-                if current_date.month in grouped_transactions[current_date.year].keys():
-                    data_pos.append(grouped_transactions[current_date.year][current_date.month]['income'])
-                    data_neg.append(abs(grouped_transactions[current_date.year][current_date.month]['expenses']))
-                    data_sum.append(grouped_transactions[current_date.year][current_date.month]['total'])
-                else:
-                    data_pos.append(0)
-                    data_neg.append(0)
-                    data_sum.append(0)
-            else:
-                for i in range(12):
-                    data_pos.append(0)
-                    data_neg.append(0)
-                    data_sum.append(0)
-
-            if current_date.month == 12:
-                current_date = date(current_date.year + 1, 1, 1)
-            else:
-                current_date = date(current_date.year, current_date.month + 1, 1)
+    if status == "success":
+        return redirect(url_for("accounts.show", account_id=account_id))
     else:
-        data_y.append("None")
-        data_pos.append(0)
-        data_neg.append(0)
-        data_sum.append(0)
+        return redirect(url_for("accounts.index"))
 
-    # Donut chart - only expenses
-    expenses_per_category = {
-        "Salary": 0,
-        "Rent": 0,
-        "Utilities": 0,
-        "Groceries": 0,
-        "Night out": 0,
-        "Online services": 0
-    }
-    for transaction in transactions:
-        if transaction.amount < 0:
-            expenses_per_category[transaction.category] += transaction.amount
+@transactions_bp.route("/accounts/<int:sender_account_id>/transactions/create_subaccount_transfer", methods=["POST"])
+def create_subaccount_transfer(sender_account_id):
+    # Local imports to avoid import order error
+    from project.accounts.accounts import AccountNotFoundError, validate_account
 
-    colors = ["#321D70", "#25528F", "#5083C1", "#7CA6D7", "#A6C4E5", "#CCD9F5"]
+    # Process form data
+    transfer_form = SubaccountTransferForm()
+    try:
+        sender_account = validate_account(sender_account_id)
 
-    if len(transactions) == 0:
-        values = [0, 0, 0, 0, 0, 0]
-        labels = list(expenses_per_category.keys())
+        message, status = update_transfer_form(transfer_form, sender_account.id)
+
+        recipient_account_title, recipient_fractional_iban = validate_transfer_data(transfer_form)
+
+        # Retrieve recipient account based on parsed data
+        recipient_account = get_recipient_account(recipient_account_title, recipient_fractional_iban)
+
+        # Create transactions
+        process_sender_transaction(sender_account, transfer_form)
+        process_recipient_transaction(recipient_account, transfer_form)
+
+        message = f"Successfully created transfer from {sender_account.title} to {recipient_account.title}"
+        status = "success"
+        flash(message, status)
+        return redirect(url_for("accounts.show", account_id=sender_account_id))
+
+    except AccountNotFoundError as ae:
+        flash(str(ae), "error")
+        return redirect(url_for("accounts.index"))
+    except (NoResultFound, TransactionError, ValueError) as e:
+        flash(str(e), "error")
+        return redirect(url_for("accounts.show", account_id=sender_account_id))
+
+# Work on this !
+@transactions_bp.route('/download_csv', methods=['POST'])
+def download_csv():
+    try:
+        account = Account.query.get(request.form.get('account_id'))
+        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date() if request.form.get('start_date') != "None" else None
+        end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date() if request.form.get('end_date') != "None" else None
+        transaction_description = request.form.get('transaction_description') if request.form.get('transaction_description') != "None" else None
+        search_type = request.form.get('search_type') if request.form.get('search_type') != "None" else None
+
+        # Query transactions, just like in index route
+        transactions = Transaction.read_all(account_id=account.id,
+                                            start_date = start_date,
+                                            end_date=end_date,
+                                            search_type=search_type,
+                                            transaction_description=transaction_description)
+
+        def generate():
+            data = StringIO()
+            writer = csv.writer(data)
+
+            writer.writerow(("Account_iban", "Date", "Description", "Category", "Amount", "Saldo"))
+            yield data.getvalue()
+            data.seek(0)
+            data.truncate(0)
+
+            for transaction in transactions:
+                writer.writerow((
+                    transaction.account.iban,
+                    transaction.utc_datetime_booked.strftime("%d/%m/%Y"),
+                    transaction.description,
+                    f"{transaction.amount}€",
+                    f"{transaction.saldo}€"
+                ))
+                yield data.getvalue()
+                data.seek(0)
+                data.truncate(0)
+
+        response = Response(generate(), mimetype='text/csv')
+        response.headers.set("Content-Disposition", "attachment", filename="data.csv")
+        flash('Successfully downloaded csv.', "success")
+        return response
+    except:
+        flash('Successfully went wrong while downloading csv.', "error")
+        return redirect(url_for("accounts.show", account_id=1))
+
+
+## Subfunctions
+def create_transaction(account, description, amount, category, utc_datetime_booked=None):
+    '''
+    :param account: valid (!) account instance
+    :param description: Description of transaction
+    :param amount: Transaction amount
+    :param category: TO BE DISCUSSED
+    :param utc_datetime_booked: datetime object in UTC timezone format
+    '''
+    try:
+        # Create new transaction and link to account
+        transaction = Transaction(description=description, amount=amount, category=category, utc_datetime_booked=utc_datetime_booked)
+        account.transactions.append(transaction)
+        db_session.add(account)
+        db_session.commit()
+
+        # Calculate saldo for transaction
+        transaction.calculate_saldo()
+
+        print(f"Successfully created the transaction: {transaction}")
+        return "success", "Successfully created the transaction.", transaction.id
+
+    except ValueError as ve: # This will capture all ValueErrors raised in __init__
+        db_session.rollback()
+        print(f"Error: {ve}") # Display the actual error message from __init__
+        return "error", f"{ve}", None
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while creating the transaction: {e}")
+        return "error", 'Error occurred while creating the transaction.', None
+
+def update_transfer_form(form, sender_account_id):
+    try:
+        all_accounts = Account.query.all()
+        if len(all_accounts) == 1:
+            # If only one account exists, disable all fields (no transfer destination available)
+            for field in form:
+                field.render_kw = {**field.render_kw, 'disabled': True} if field.render_kw else {'disabled': True}
+
+        else:
+            for account in all_accounts:
+                if account.id != sender_account_id:
+                    form.recipient.choices.append(f"{account.title} ({account.iban[:4]}...{account.iban[-2:]})") # Do not add currently displayed account
+
+            # Update the (AnyOf) validators for the recipient field
+            form.recipient.validators = [DataRequired()]
+            recipient_values = [choice for choice in form.recipient.choices if choice != "Recipient"] # make Recipient not a valid value
+            form.recipient.validators.append(AnyOf(recipient_values))
+    except Exception:
+        return "Could not update transfer form.", "error"
     else:
-        labels = []
-        values = []
-        for key, val in expenses_per_category.items():
-            labels.append(key)
-            values.append(float(-1*val))
+        return "Updated transfer form", "success"
 
-    fig_donut = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7)])
-    fig_donut.update_traces(hoverinfo='label+value',
-                            textinfo='none',
-                            marker=dict(colors=colors, line=dict(color='#000000', width=2))
-                            )
-    fig_donut.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(t=0, b=0, l=1, r=0),
-            legend=dict(
-                y=0.5,
-            )
-        )
-    if len(transactions) == 0:
-        fig_donut.update_layout(annotations=[dict(text='No results', x=0.5, y=0.5, font_size=16, showarrow=False)])
+def validate_transfer_data(form):
+    # Evaluate data received from form
+    if not form.validate(): # Validates reference max length, recipient(that it cannot be "Recipient" too), amount(can be string digits, cannot be = 0)
+        raise ValueError('Form data is not valid.')
     else:
-        fig_donut.update_layout(annotations=[dict(text='Expenses', x=0.5, y=0.5, font_size=16, showarrow=False)])
+        recipient_title = form.recipient.data.split("(")[0].strip()
+        recipient_fractional_iban = form.recipient.data.split("(")[1].strip()
+        recipient_fractional_iban = recipient_fractional_iban.split(")")[0].strip()
+        return recipient_title, recipient_fractional_iban
 
-    graphJSON_donut = json.dumps(fig_donut, cls=plotly.utils.PlotlyJSONEncoder)
+def get_recipient_account(title, fractional_iban):
+    """Retrieve recipient account based on title and fractional IBAN."""
+    return Account.query.filter(
+        Account.title == title,
+        Account.iban.like(f"{fractional_iban[:4]}%"),
+        Account.iban.like(f"%{fractional_iban[-2:]}")
+    ).one()
 
-    # Bar chart
-    fig_bar = go.Figure()
-    fig_bar.add_trace(go.Bar(x=data_y,
-                    y=data_pos,
-                    name='Income',
-                    marker_color='#38485E'
-                    ))
-    fig_bar.add_trace(go.Bar(x=data_y,
-                    y=data_neg,
-                    name='Expenses',
-                    marker_color='#E36E39'
-                    ))
-
-    fig_bar.update_layout(
-        xaxis_tickfont_size=14,
-        yaxis=dict(
-            title='Amount',
-            # titlefont_size=16,
-            # tickfont_size=14,
-        ),
-        margin=dict(r=0),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        showlegend=False,
-        barmode='group',
-        bargap=0.15, # gap between bars of adjacent location coordinates.
-        bargroupgap=0.1 # gap between bars of the same location coordinate.
+def process_sender_transaction(account, form):
+    """Process sender transaction and return its ID."""
+    status, message, transaction_id = create_transaction(
+        account=account,
+        description=form.description.data,
+        amount=-form.amount.data,
+        category="Transfer"
     )
+    if not transaction_id or status == "error":
+        raise TransactionError(message)
 
-    graphJSON_bar = json.dumps(fig_bar, cls=plotly.utils.PlotlyJSONEncoder)
-
-    return render_template('transactions/index.html',
-                            unique_descriptions=unique_descriptions,
-                            transactions=transactions,
-                            template_form=transaction_form,
-                            filter_form=filter_form,
-                            graphJSON_bar=graphJSON_bar,
-                            graphJSON_donut=graphJSON_donut,
-                            transactions_sum=transactions_sum)
-
-
-
-## API endpoints
-def transactions_to_json(transaction_list):
-    json_transactions = []
-    for transaction in transaction_list:
-        transaction_dict = {
-            "id": str(transaction.id),
-            "amount": str(transaction.amount),
-            "saldo": str(transaction.saldo),
-            "description": transaction.description,
-            "category": transaction.category,
-            "date_booked": transaction.date_booked.isoformat()
-        }
-        json_transactions.append(transaction_dict)
-    return json_transactions
-
-# Read all transactions
-def read_all():
-    return transactions_to_json(Transaction.query.all())
-
-# Read single transaction
-def read_one(id):
-    data = Transaction.query.get(id)
-    if data:
-        return transactions_to_json([data])
-    else:
-        abort(
-            404, f"Transaction with id {id} not found"
-        )
-
-# Create a transaction
-def create(transaction):
-    transaction = dict(description=transaction.get("description"),amount=transaction.get("amount"), category=transaction.get("category"), date_booked=transaction.get("date_booked"))
-
-    # Validate request data
-    if transaction["description"] == None or len(transaction["description"]) > 80:
-        return jsonify({'error': 'Invalid or missing description'}), 400
-
-    if not isinstance(transaction["amount"], (int, float)):
-        return jsonify({'error': 'Invalid or missing amount'}), 400
-
-    if transaction["category"] not in ["Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
-        return jsonify({'error': 'Invalid category value'}), 400
-
-    if transaction["date_booked"] != None and transaction["date_booked"] != "None":
-        try:
-            transaction["date_booked"] = datetime.fromisoformat(transaction["date_booked"].replace('Z', '+00:00'))
-        except:
-            return jsonify({'error': 'Could not convert date_booked to datetime object,'}), 400
-
-    # Create a new Transaction object
-    new_transaction = Transaction(**transaction)
-    db_session.add(new_transaction)
-    db_session.commit()
-    new_transaction.calculate_saldo()
-
-    # Return a success response
-    return jsonify({
-        'id': new_transaction.id,
-        'description': new_transaction.description,
-        'amount': float(new_transaction.amount),
-        'category': new_transaction.category,
-        'date_booked': new_transaction.date_booked.strftime('%Y-%m-%dT%H:%M:%SZ'),
-        'saldo': float(new_transaction.saldo)
-    }), 201
+def process_recipient_transaction(account, form):
+    """Process recipient transaction and return its ID."""
+    status, message, transaction_id = create_transaction(
+        account=account,
+        description=form.description.data,
+        amount=form.amount.data,
+        category="Transfer"
+    )
+    if not transaction_id or status == "error":
+        raise TransactionError(message)
