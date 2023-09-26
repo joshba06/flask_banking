@@ -5,9 +5,6 @@ from pprint import pprint
 import pytz
 from sqlalchemy.orm.exc import NoResultFound
 
-# # New tests to be added
-# # Group my month tests are needed if the function will remain.
-
 ## Model tests (test the __init__ method)
 def test_default_date_booked(model_initialiser):
     # Test that if no date_booked is provided, it defaults to the current datetime
@@ -25,11 +22,18 @@ def test_invalid_long_description(model_initialiser):
     with pytest.raises(ValueError, match="The description variable must be a string with more than 0 and less than 80 characters."):
         Transaction("A" * 81, 100.00, "Salary")
 
+def test_invalid_whitespace_description(model_initialiser):
+    # Test that a ValueError is raised when the description is too long
+    _, Transaction = model_initialiser
+
+    with pytest.raises(ValueError, match="The description variable must be a string with more than 0 and less than 80 characters."):
+        Transaction("    ", 100.00, "Salary")
+
 def test_invalid_amount_type(model_initialiser):
     # Test that a ValueError is raised when the amount is not a valid type
     _, Transaction = model_initialiser
 
-    invalid_amounts = ["abcd", [], {}]
+    invalid_amounts = ["abcd", [], {}, 0]
     for invalid_amount in invalid_amounts:
         with pytest.raises(ValueError, match="The amount variable must be non-zero decimal, integer or float."):
             Transaction("Description", invalid_amount, "Rent")
@@ -68,6 +72,7 @@ def test_valid_transaction(model_initialiser):
 
 
 ## Transaction sub-function tests (create_transaction, form validation etc.)
+# Web route sub-function tests
 @pytest.fixture
 def valid_account(db_initialiser):
     Account, Transaction, db_session = db_initialiser
@@ -98,7 +103,7 @@ def test_create_transaction_valid_transaction(valid_account):
 
     status, message, _ = create_transaction(valid_account, "Description", 100, "Rent")
     assert status == "success"
-    assert message == "Successfully created new transaction."
+    assert message == "Successfully created the transaction."
 
 def test_create_transaction_invalid_description(valid_account):
     from project.transactions.transactions import create_transaction
@@ -115,6 +120,10 @@ def test_create_transaction_invalid_amount(valid_account):
     from project.transactions.transactions import create_transaction
 
     status, message, _  = create_transaction(valid_account, "Description", "abcd", "Rent")
+    assert status == "error"
+    assert message == "The amount variable must be non-zero decimal, integer or float."
+
+    status, message, _  = create_transaction(valid_account, "Description", 0, "Rent")
     assert status == "error"
     assert message == "The amount variable must be non-zero decimal, integer or float."
 
@@ -144,7 +153,7 @@ def test_create_transaction_valid_date_booked(valid_account):
 
     status, message, _ = create_transaction(valid_account, "Description", 100, "Rent", utc_date_booked)
     assert status == "success"
-    assert message == "Successfully created new transaction."
+    assert message == "Successfully created the transaction."
 
 def test_create_transaction_database_error(account_initialiser):
     from project.transactions.transactions import create_transaction
@@ -153,14 +162,14 @@ def test_create_transaction_database_error(account_initialiser):
     assert status == "error"
     assert message == "Error occurred while creating the transaction."
 
-def test_validate_account(valid_account):
-    from project.transactions.transactions import validate_account, AccountNotFoundError
+def test_validate_account_nonexistent_id(valid_account):
+    from project.accounts.accounts import validate_account, AccountNotFoundError
 
     result_account = validate_account(valid_account.id)
     assert result_account.id == valid_account.id
     assert result_account.iban == valid_account.iban
 
-    with pytest.raises(AccountNotFoundError, match="Account not found."):
+    with pytest.raises(AccountNotFoundError, match="Account with ID 99 not found."):
         validate_account(99)
 
 def test_get_recipient_account_invalid(bulk_accounts):
@@ -299,7 +308,7 @@ def test_process_sender_transaction_invalid_data(configure_transfer_form, bulk_a
     subaccount_transfer_form.amount.data = 0
     account = bulk_accounts[0]
 
-    with pytest.raises(TransactionError, match="Failed to process sender transaction."):
+    with pytest.raises(TransactionError, match="The description variable must be a string with more than 0 and less than 80 characters."):
         process_sender_transaction(account, subaccount_transfer_form)
 
     # Ensure transfer isnt processed with invalid account
@@ -307,7 +316,7 @@ def test_process_sender_transaction_invalid_data(configure_transfer_form, bulk_a
     subaccount_transfer_form.amount.data = 100
     account = 1
 
-    with pytest.raises(TransactionError, match="Failed to process sender transaction."):
+    with pytest.raises(TransactionError, match="Error occurred while creating the transaction."): #Generic error because account isnt validated in this function
         process_sender_transaction(account, subaccount_transfer_form)
 
 def test_process_sender_transaction_valid_data(configure_transfer_form, bulk_accounts):
@@ -322,6 +331,46 @@ def test_process_sender_transaction_valid_data(configure_transfer_form, bulk_acc
 
     transaction = next((transaction for transaction in account.transactions if transaction.description == "Valid transaction 2023"), None)
     assert transaction
+
+
+# API subfunction tests
+def test_validate_and_get_utc_datetime_valid_input(app_initialiser):
+    from project.transactions.api import validate_and_get_utc_datetime
+
+    valid_datetime_string = "2023-09-25T15:45:30+00:00"
+    result = validate_and_get_utc_datetime(valid_datetime_string)
+
+    expected = datetime(2023, 9, 25, 15, 45, 30, tzinfo=pytz.UTC)
+    assert result == expected
+
+def test_validate_and_get_utc_datetime_invalid_format(app_initialiser):
+    from project.transactions.api import validate_and_get_utc_datetime, DateTimeFormatError
+
+    invalid_datetime_string = "2023-09-25 15:45:30"
+
+    with pytest.raises(DateTimeFormatError, match="utc_datetime_booked was not provided in the correct format."):
+        validate_and_get_utc_datetime(invalid_datetime_string)
+
+def test_validate_and_get_utc_datetime_unparseable_input(app_initialiser):
+    from project.transactions.api import validate_and_get_utc_datetime, DateTimeConversionError
+
+    invalid_datetime_string = "2023-13-45T99:99:99+00:00"  # Invalid month and time values
+
+    with pytest.raises(DateTimeConversionError, match="Could not convert utc_datetime_booked to datetime object"):
+        validate_and_get_utc_datetime(invalid_datetime_string)
+
+def test_validate_and_get_utc_datetime_invalid_timezone(app_initialiser):
+    from project.transactions.api import validate_and_get_utc_datetime, DateTimeFormatError
+
+    invalid_datetime_string = "2023-09-25T15:45:30+05:00"  # +05:00 instead of +00:00
+
+    with pytest.raises(DateTimeFormatError, match="utc_datetime_booked was not provided in the correct format."):
+        validate_and_get_utc_datetime(invalid_datetime_string)
+
+
+
+
+
 
 
 # ## Database tests (inkl. association of models Account and Transaction)
@@ -506,13 +555,3 @@ def test_process_sender_transaction_valid_data(configure_transfer_form, bulk_acc
 
 #     with pytest.raises(ValueError, match="search_type must be either 'Includes' or 'Matches'."):
 #         Transaction.read_all(account_id=1, search_type="InvalidSearch")
-
-# def test_group_by_month_valid_input(model_initialiser):
-#     # Test case: Valid input
-#     _, Transaction = model_initialiser
-#     transactions = [
-#         Transaction(description="Income 1", amount=100.00, category="Salary", date_booked=datetime(2023, 1, 15)),
-#         Transaction(description="Expense 1", amount=-50.00, category="Rent", date_booked=datetime(2023, 1, 20)),
-#     ]
-#     result = Transaction.group_by_month(transactions)
-#     assert isinstance(result, dict)

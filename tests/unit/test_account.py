@@ -45,16 +45,14 @@ def test_long_iban_length(account_initialiser):
     with pytest.raises(ValueError, match="iban must be exactly 22 characters long."):
         Account("ValidTitle", "DE893704004405320130001234")
 
-# -> No test for dupicate iban, because that requires db connection and thus no model test
-
 def test_repr_method(account_initialiser):
     Account = account_initialiser
 
     account = Account(title="John's Savings", iban="GB29000060161331920000")
     assert str(account) == "[Account] iban: GB29000060161331920000, title: John's Savings"
 
-## Account sub-function tests (create_account, generate_unique_iban ...)
 
+## Account sub-function tests (create_account, generate_unique_iban ...)
 def test_create_account_valid_account_creation(account_initialiser): # -> Sub function of create() route
     from project.accounts.accounts import create_account
 

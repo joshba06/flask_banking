@@ -1,4 +1,4 @@
-# Flask
+## Imports
 from flask import (
     Blueprint, redirect, render_template, request, url_for, flash
 )
@@ -20,12 +20,13 @@ from project.db import db_session
 # Forms
 from project.transactions.transactions import TransactionForm, SubaccountTransferForm
 
-# Define the name of this blueprint and which url its reached under. This has to be registered in create_app()
-accounts_bp = Blueprint('accounts', __name__,
-               template_folder='templates',
-               static_folder='../static',
-               static_url_path='assets')
+## Custom exceptions
+class AccountNotFoundError(Exception):
+    def __init__(self, account_id):
+        self.account_id = account_id
+        super().__init__(f"Account with ID {self.account_id} not found.")
 
+## Forms
 class FilterForm(FlaskForm):
     search_type = SelectField('Search type', choices = ["Matches", "Includes"])
     transaction_description = StringField("Description", render_kw={"placeholder": "Search term"})
@@ -53,6 +54,11 @@ class EditAccountForm(AccountForm):
 class DeleteAccountForm(FlaskForm):
     delete = SubmitField("Delete")
 
+## Routes
+accounts_bp = Blueprint('accounts', __name__,
+               template_folder='templates',
+               static_folder='../static',
+               static_url_path='assets')
 
 @accounts_bp.route("/accounts", methods=["GET"])
 def index():
@@ -113,7 +119,7 @@ def show(account_id, transactions_filter=None):
     # Subaccount transfer form
     from project.transactions.transactions import update_transfer_form
     subaccount_transfer_form = SubaccountTransferForm()
-    
+
     message, status = update_transfer_form(subaccount_transfer_form, account_id)
     if status == "error":
         flash(message, status)
@@ -189,52 +195,6 @@ def create():
     else:
         return redirect(url_for("accounts.index"))
 
-def generate_unique_iban():
-    # Create new iban
-    iban = "GB29000060161331920000"
-    if Account.query.count() > 0:
-        all_ibans = [account.iban for account in Account.query.all()]
-        iban_invalid = True
-        increment = 1
-        while iban_invalid:
-            last_four = iban[-4:]
-            incremented_value = int(last_four) + increment
-            if incremented_value == 10000:
-                incremented_value = 0
-            new_last_four = "{:04}".format(incremented_value)
-            new_iban = iban[:-4] + new_last_four
-            if new_iban not in all_ibans:
-                iban_invalid = False
-            else:
-                increment += 1
-    else:
-        new_iban = iban
-    return new_iban
-
-def create_account(iban, title):
-    try:
-        new_account = Account(iban=iban, title=title)
-        db_session.add(new_account)
-        db_session.commit()
-        print(f"Successfully created new account: {new_account}")
-        return "success", 'Successfully created new account.'
-    except ValueError as ve: # This will capture all ValueErrors raised in __init__
-        db_session.rollback()
-        print(f"Error: {ve}") # Display the actual error message from __init__
-        return "error", f"{ve}"
-    except IBANAlreadyExistsError as ib:
-        db_session.rollback()
-        print(f"Error: {ib}") # Display the actual error message from __init__
-        return "error", f"{ib}"
-    except AccountLimitException as ale:
-        db_session.rollback()
-        print(f"Error: {ale}") # Display the actual error message from __init__
-        return "error", f"{ale}"
-    except Exception as e:
-        db_session.rollback()
-        print(f"Error occurred while creating new account: {e}")
-        return "error", 'Error occurred while creating the account.'
-
 @accounts_bp.route("/accounts/<int:account_id>/update", methods=["POST"])
 def update(account_id):
 
@@ -300,3 +260,57 @@ def delete(account_id):
         print(f"Error occurred while deleting account: {e}")
         flash('Something went wrong while deleting account', "error")
         return redirect(url_for("accounts.show", account_id=account_id))
+
+
+## Subfunctions
+def generate_unique_iban():
+    # Create new iban
+    iban = "GB29000060161331920000"
+    if Account.query.count() > 0:
+        all_ibans = [account.iban for account in Account.query.all()]
+        iban_invalid = True
+        increment = 1
+        while iban_invalid:
+            last_four = iban[-4:]
+            incremented_value = int(last_four) + increment
+            if incremented_value == 10000:
+                incremented_value = 0
+            new_last_four = "{:04}".format(incremented_value)
+            new_iban = iban[:-4] + new_last_four
+            if new_iban not in all_ibans:
+                iban_invalid = False
+            else:
+                increment += 1
+    else:
+        new_iban = iban
+    return new_iban
+
+def create_account(iban, title):
+    try:
+        new_account = Account(iban=iban, title=title)
+        db_session.add(new_account)
+        db_session.commit()
+        print(f"Successfully created new account: {new_account}")
+        return "success", 'Successfully created new account.'
+    except ValueError as ve: # This will capture all ValueErrors raised in __init__
+        db_session.rollback()
+        print(f"Error: {ve}") # Display the actual error message from __init__
+        return "error", f"{ve}"
+    except IBANAlreadyExistsError as ib:
+        db_session.rollback()
+        print(f"Error: {ib}") # Display the actual error message from __init__
+        return "error", f"{ib}"
+    except AccountLimitException as ale:
+        db_session.rollback()
+        print(f"Error: {ale}") # Display the actual error message from __init__
+        return "error", f"{ale}"
+    except Exception as e:
+        db_session.rollback()
+        print(f"Error occurred while creating new account: {e}")
+        return "error", 'Error occurred while creating the account.'
+
+def validate_account(account_id):
+    account = Account.query.get(account_id)
+    if not account:
+        raise AccountNotFoundError(account_id)
+    return account

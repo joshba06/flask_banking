@@ -62,7 +62,9 @@ saldo
 
 category
 - (String): Transaction category.
-- Must be one of the following: ["Transfer", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
+- Model level accepts one of the following: ["Transfer", "Salary", "Rent", "Utilities", "Groceries", "Night out", "Online services"]:
+- Validation for subaccount transfer (allows only "Transfer") doenst exist. API endpoint assigns category "Transfer" in backend logic.
+- Validation for standard transaction (does not allow "Transfer") is done by swagger
 
 !- a standard transaction cannot have "Transfer" as a category.
 !- a subaccount can only have "Transfer" as a category.
