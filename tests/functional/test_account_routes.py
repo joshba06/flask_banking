@@ -202,9 +202,26 @@ def test_successful_delete(client_initialiser, two_accounts, account_initialiser
     assert "Successfully deleted account." in response.data.decode()
     assert response.request.path == f"/accounts/{two_accounts[1].id}"
 
-# Test delete account and associated transactions
-def test_delete_account_associated_transactions():
-    assert 1 == 2
+def test_delete_account_associated_transactions(db_initialiser, client_initialiser, two_accounts):
+    Account, Transaction, db_session = db_initialiser
+    from project.transactions.transactions import create_transaction
+
+    # Ensure account has no transactions before test and no transactions exist before test
+    first_account = two_accounts[0]
+    second_account = two_accounts[1]
+    assert first_account.transactions.count() == 0
+    assert Transaction.query.count() == 0
+
+    # Add transactions to account and ensure transaction counts reflect the change
+    status, message, transaction_1_id = create_transaction(first_account, "Description", 100, "Rent")
+    status, message, transaction_2_id = create_transaction(first_account, "Description", 100, "Rent")
+    assert Transaction.query.count() == 2 and first_account.transactions.count() == 2
+
+    # Delete account and ensure transactions are deleted
+    response = client_initialiser.post(f"/accounts/{first_account.id}/delete", follow_redirects=True)
+    assert Account.query.count() == 1
+
+    assert Transaction.query.count() == 0
 
 
 ## API tests
@@ -342,9 +359,26 @@ def test_api_delete_last_account(client_initialiser, two_accounts, account_initi
 
     assert account_initialiser.query.limit(2).count() == 1
 
-# Test delete account and associated transactions
-def test_api_delete_account_associated_transactions():
-    assert 1 == 2
+def test_api_delete_account_associated_transactions(db_initialiser, client_initialiser, two_accounts):
+    Account, Transaction, db_session = db_initialiser
+    from project.transactions.transactions import create_transaction
+
+    # Ensure account has no transactions before test and no transactions exist before test
+    first_account = two_accounts[0]
+    second_account = two_accounts[1]
+    assert first_account.transactions.count() == 0
+    assert Transaction.query.count() == 0
+
+    # Add transactions to account and ensure transaction counts reflect the change
+    status, message, transaction_1_id = create_transaction(first_account, "Description", 100, "Rent")
+    status, message, transaction_2_id = create_transaction(first_account, "Description", 100, "Rent")
+    assert Transaction.query.count() == 2 and first_account.transactions.count() == 2
+
+    # Delete account and ensure transactions are deleted
+    response = client_initialiser.delete(f"/api/accounts/{first_account.id}")
+    assert Account.query.count() == 1
+
+    assert Transaction.query.count() == 0
 
 # get
 def test_api_get_account_invalid_id(client_initialiser):
